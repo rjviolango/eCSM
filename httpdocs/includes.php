@@ -13,7 +13,30 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-date_default_timezone_set('Asia/Manila');
+// --- LOAD SITE SETTINGS FROM DATABASE ---
+// Establish a temporary connection to fetch settings first
+try {
+    $temp_pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME, DB_USER, DB_PASS);
+    $temp_pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $stmt = $temp_pdo->query("SELECT setting_name, setting_value FROM settings");
+    $CONFIG = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $CONFIG[$row['setting_name']] = $row['setting_value'];
+    }
+} catch (PDOException $e) {
+    // Fallback if DB connection or settings table fails
+    $CONFIG = [
+        'agency_name' => 'CITY GOVERNMENT OF GINGOOG',
+        'province_name' => 'Misamis Oriental',
+        'region_name' => 'Region X',
+        'agency_logo' => 'default_logo.png',
+        'password_complexity' => 'medium',
+        'timezone' => 'Asia/Manila' // Default fallback timezone
+    ];
+}
+
+// *** MODIFIED: Set timezone based on database config with a fallback ***
+date_default_timezone_set($CONFIG['timezone'] ?? 'Asia/Manila');
 
 // --- START SESSION ---
 if (session_status() == PHP_SESSION_NONE) {
@@ -21,27 +44,12 @@ if (session_status() == PHP_SESSION_NONE) {
 }
 
 // --- DATABASE CONNECTION (PDO) ---
+// Use the permanent PDO object from now on
 try {
     $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME, DB_USER, DB_PASS);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
     die("ERROR: Could not connect. " . $e->getMessage());
-}
-
-// --- LOAD SITE SETTINGS FROM DATABASE ---
-$CONFIG = [];
-try {
-    $stmt = $pdo->query("SELECT setting_name, setting_value FROM settings");
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $CONFIG[$row['setting_name']] = $row['setting_value'];
-    }
-} catch (PDOException $e) {
-    // If settings table doesn't exist yet during initial setup, don't crash
-    // Fallback to default values
-    $CONFIG['agency_name'] = 'CITY GOVERNMENT OF GINGOOG';
-    $CONFIG['province_name'] = 'Misamis Oriental';
-    $CONFIG['region_name'] = 'Region X';
-    $CONFIG['agency_logo'] = 'default_logo.png';
 }
 
 

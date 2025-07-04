@@ -31,6 +31,15 @@ if (isset($_GET['action'])) {
         echo json_encode($items);
         exit;
     }
+    // *** NEW: AJAX endpoint to get services for a specific department ***
+    if (is_logged_in() && $_GET['action'] == 'get_services_for_dept' && isset($_GET['department_id'])) {
+        header('Content-Type: application/json');
+        $dept_id = (int)$_GET['department_id'];
+        $stmt = $pdo->prepare("SELECT id, service_name as name FROM services WHERE department_id = ? ORDER BY service_name");
+        $stmt->execute([$dept_id]);
+        echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+        exit;
+    }
     if (is_logged_in() && $_GET['action'] == 'change_password') {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Content-Type: application/json');
@@ -75,8 +84,77 @@ if (isset($_GET['action'])) {
         $stmt = $pdo->prepare($sql); $stmt->execute($params);
         header('Content-Type: text/csv'); header('Content-Disposition: attachment; filename="csm_report_'.date('Y-m-d').'.csv"');
         $output = fopen('php://output', 'w');
-        fputcsv($output, ['Response ID', 'Submission Date', 'Department', 'Service', 'Affiliation', 'Client Type', 'Age', 'Sex', 'Region', 'CC1', 'CC2', 'CC3', 'SQD0', 'SQD1', 'SQD2', 'SQD3', 'SQD4', 'SQD5', 'SQD6', 'SQD7', 'SQD8', 'Suggestions']);
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { fputcsv($output, [ $row['id'], $row['submission_date'], $row['department_name'], $row['service_name'], $row['affiliation'], $row['client_type'], $row['age'], $row['sex'], $row['region_of_residence'], $row['cc1'], $row['cc2'], $row['cc3'], $row['sqd0'], $row['sqd1'], $row['sqd2'], $row['sqd3'], $row['sqd4'], $row['sqd5'], $row['sqd6'], $row['sqd7'], $row['sqd8'], $row['suggestions'] ]); }
+        fputcsv($output, ['Response ID', 'Submission Date', 'Department', 'Service', 'Affiliation', 'Client Type', 'Age', 'Sex', 'Region', 'CC1', 'CC2', 'CC3', 'SQD0', 'SQD1', 'SQD2', 'SQD3', 'SQD4', 'SQD5', 'SQD6', 'SQD7', 'SQD8', 'Suggestions', 'Email']);
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { fputcsv($output, [ $row['id'], $row['submission_date'], $row['department_name'], $row['service_name'], $row['affiliation'], $row['client_type'], $row['age'], $row['sex'], $row['region_of_residence'], $row['cc1'], $row['cc2'], $row['cc3'], $row['sqd0'], $row['sqd1'], $row['sqd2'], $row['sqd3'], $row['sqd4'], $row['sqd5'], $row['sqd6'], $row['sqd7'], $row['sqd8'], $row['suggestions'], $row['email_address'] ]); }
+        fclose($output);
+        exit;
+    }
+    // *** NEW: AJAX endpoint to get a single response's full details ***
+    if (is_logged_in() && $_GET['action'] == 'get_response_details' && isset($_GET['id'])) {
+        header('Content-Type: application/json');
+        $response_id = (int)$_GET['id'];
+        $sql = "SELECT r.*, s.service_name, d.name as department_name 
+                FROM csm_responses r 
+                JOIN services s ON r.service_id = s.id 
+                JOIN departments d ON s.department_id = d.id 
+                WHERE r.id = :response_id";
+        
+        // Security check for department users
+        if (!is_admin()) {
+            $sql .= " AND d.id = :user_dept_id";
+            $params = [':response_id' => $response_id, ':user_dept_id' => $_SESSION['department_id']];
+        } else {
+            $params = [':response_id' => $response_id];
+        }
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $response = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($response) {
+            echo json_encode(['success' => true, 'data' => $response]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Response not found or access denied.']);
+        }
+        exit;
+    }
+    // *** NEW: AJAX endpoint for exporting filtered CSM data ***
+    if (is_logged_in() && $_GET['action'] == 'export_csm_data_csv') {
+        $params = [];
+        $where_clauses = [];
+        $date_start = $_GET['date_start'] ?? date('Y-m-d', strtotime('-29 days'));
+        $date_end = $_GET['date_end'] ?? date('Y-m-d');
+        $where_clauses[] = "r.submission_date BETWEEN :date_start AND :date_end_plus_one";
+        $params[':date_start'] = $date_start;
+        $params[':date_end_plus_one'] = date('Y-m-d', strtotime($date_end . ' +1 day'));
+        $search_term = $_GET['search'] ?? '';
+        if (!empty($search_term)) {
+            $where_clauses[] = "(s.service_name LIKE :search OR r.suggestions LIKE :search OR r.region_of_residence LIKE :search)";
+            $params[':search'] = '%' . $search_term . '%';
+        }
+        $filter_dept_id = $_GET['department_id'] ?? null;
+        $filter_service_id = $_GET['service_id'] ?? null;
+        if (is_admin()) {
+            if (!empty($filter_dept_id)) {
+                $where_clauses[] = "d.id = :dept_id";
+                $params[':dept_id'] = $filter_dept_id;
+            }
+        } else {
+            $where_clauses[] = "d.id = :user_dept_id";
+            $params[':user_dept_id'] = $_SESSION['department_id'];
+        }
+        if (!empty($filter_service_id)) {
+            $where_clauses[] = "s.id = :service_id";
+            $params[':service_id'] = $filter_service_id;
+        }
+        $where_sql = count($where_clauses) > 0 ? 'WHERE ' . implode(' AND ', $where_clauses) : '';
+        $sql = "SELECT r.*, s.service_name, d.name as department_name FROM csm_responses r JOIN services s ON r.service_id = s.id JOIN departments d ON s.department_id = d.id $where_sql ORDER BY r.submission_date DESC";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        header('Content-Type: text/csv'); header('Content-Disposition: attachment; filename="csm_data_export_'.date('Y-m-d').'.csv"');
+        $output = fopen('php://output', 'w');
+        fputcsv($output, ['Response ID', 'Submission Date', 'Department', 'Service', 'Affiliation', 'Client Type', 'Age', 'Sex', 'Region', 'Email', 'CC1', 'CC2', 'CC3', 'SQD0', 'SQD1', 'SQD2', 'SQD3', 'SQD4', 'SQD5', 'SQD6', 'SQD7', 'SQD8', 'Suggestions']);
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { fputcsv($output, [ $row['id'], $row['submission_date'], $row['department_name'], $row['service_name'], $row['affiliation'], $row['client_type'], $row['age'], $row['sex'], $row['region_of_residence'], $row['email_address'], $row['cc1'], $row['cc2'], $row['cc3'], $row['sqd0'], $row['sqd1'], $row['sqd2'], $row['sqd3'], $row['sqd4'], $row['sqd5'], $row['sqd6'], $row['sqd7'], $row['sqd8'], $row['suggestions'] ]); }
         fclose($output);
         exit;
     }
@@ -109,7 +187,8 @@ $action_message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (is_admin() && $page === 'settings' && isset($_POST['update_settings'])) {
-        $allowed_settings = ['agency_name', 'province_name', 'region_name', 'password_complexity'];
+        // *** MODIFIED: Added 'timezone' to allowed settings ***
+        $allowed_settings = ['agency_name', 'province_name', 'region_name', 'password_complexity', 'timezone'];
         foreach ($allowed_settings as $setting) { if (isset($_POST[$setting])) { $stmt = $pdo->prepare("UPDATE settings SET setting_value = ? WHERE setting_name = ?"); $stmt->execute([$_POST[$setting], $setting]); } }
         if (isset($_FILES['agency_logo']) && $_FILES['agency_logo']['error'] == 0) {
             $target_dir = "img/"; if (!is_dir($target_dir)) { mkdir($target_dir, 0755, true); }
@@ -118,6 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if($check !== false && in_array($imageFileType, ['jpg', 'png', 'jpeg', 'gif'])) { if (move_uploaded_file($_FILES["agency_logo"]["tmp_name"], $target_file)) { $stmt = $pdo->prepare("UPDATE settings SET setting_value = ? WHERE setting_name = 'agency_logo'"); $stmt->execute([$filename]); } }
         }
         $action_message = '<div class="alert alert-success">Settings updated successfully.</div>';
+        // Reload config after update
         $stmt = $pdo->query("SELECT setting_name, setting_value FROM settings"); while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { $CONFIG[$row['setting_name']] = $row['setting_value']; }
     }
     if ($page === 'services' && isset($_POST['save_service'])) {
@@ -179,6 +259,7 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
         .navbar { z-index: 101; } 
         .page-header { margin-bottom: 1.5rem; border-bottom: 1px solid #dee2e6; padding-bottom: 1rem; }
         .footer { position: fixed; left: 0; bottom: 0; width: 100%; z-index: 101; background-color: #343a40; }
+        .form-control-plaintext { padding-left: .75rem; border: 1px solid #dee2e6; border-radius: .375rem; background-color: #e9ecef; }
     </style>
 </head>
 <body>
@@ -209,6 +290,7 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
             <ul class="nav flex-column">
                 <li class="nav-item"><a class="nav-link <?php if($page=='dashboard') echo 'active';?>" href="admin.php?page=dashboard"><i class="bi bi-grid-1x2-fill"></i>Dashboard</a></li>
                 <li class="nav-item"><a class="nav-link <?php if($page=='reports') echo 'active';?>" href="admin.php?page=reports"><i class="bi bi-file-earmark-bar-graph-fill"></i>CSM Reports</a></li>
+                <li class="nav-item"><a class="nav-link <?php if($page=='csmform') echo 'active';?>" href="admin.php?page=csmform"><i class="bi bi-file-text-fill"></i>CSM Data</a></li>
                 <li class="nav-item"><a class="nav-link <?php if($page=='services') echo 'active';?>" href="admin.php?page=services"><i class="bi bi-card-checklist"></i>Service Mgt.</a></li>
                 <?php if (is_admin()): ?>
                 <li class="nav-item"><a class="nav-link <?php if($page=='departments') echo 'active';?>" href="admin.php?page=departments"><i class="bi bi-building-fill"></i>Department Mgt.</a></li>
@@ -241,6 +323,9 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
         switch ($page) {
             case 'reports':
                 include 'reports.php';
+                break;
+            case 'csmform':
+                include 'csmform.php';
                 break;
             case 'services':
                 $departments = $pdo->query("SELECT id, name FROM departments ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
@@ -294,6 +379,15 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
                         <div class="mb-3"><label class="form-label">Agency Name</label><input type="text" name="agency_name" class="form-control" value="<?php echo e($CONFIG['agency_name']); ?>"></div>
                         <div class="mb-3"><label class="form-label">Province Name</label><input type="text" name="province_name" class="form-control" value="<?php echo e($CONFIG['province_name']); ?>"></div>
                         <div class="mb-3"><label class="form-label">Region Name</label><input type="text" name="region_name" class="form-control" value="<?php echo e($CONFIG['region_name']); ?>"></div><hr>
+                        <div class="mb-3"><label class="form-label">Timezone</label><select name="timezone" class="form-select">
+                            <?php 
+                                $timezones = DateTimeZone::listIdentifiers();
+                                foreach($timezones as $tz) {
+                                    $selected = ($CONFIG['timezone'] == $tz) ? 'selected' : '';
+                                    echo "<option value='{$tz}' {$selected}>" . e($tz) . "</option>";
+                                }
+                            ?>
+                        </select></div><hr>
                         <div class="mb-3"><label class="form-label">Password Complexity</label><select name="password_complexity" class="form-select">
                             <option value="low" <?php if($CONFIG['password_complexity'] == 'low') echo 'selected'; ?>>Low (8+ Chars)</option>
                             <option value="medium" <?php if($CONFIG['password_complexity'] == 'medium') echo 'selected'; ?>>Medium (8+ Chars, Upper, Lower, Number)</option>
@@ -353,6 +447,26 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
     <div class="modal-body text-center"><div id="qrCodePrintArea"><h4 id="qrDeptName"></h4><div id="qrcode-container" class="p-3 d-flex justify-content-center"></div><p>Scan this QR code to go directly to this department's feedback form.</p><p><small class="text-muted" id="qrUrl"></small></p></div></div>
     <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button type="button" class="btn btn-primary" id="downloadQrBtn"><i class="bi bi-download"></i> Download as Image</button></div>
     </div></div></div>
+
+    <div class="modal fade" id="viewResponseModal" tabindex="-1" aria-labelledby="viewResponseModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="viewResponseModalLabel">Feedback Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="response-details-content">
+                        <p class="text-center">Loading details...</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -478,6 +592,18 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
                 function cb(start, end) { $('#reportrange span').html(start.format('MMMM D,YYYY') + ' - ' + end.format('MMMM D,YYYY')); $('#date_start').val(start.format('YYYY-MM-DD')); $('#date_end').val(end.format('YYYY-MM-DD')); }
                 $('#reportrange').daterangepicker({ startDate: start, endDate: end, ranges: { 'Today': [moment(), moment()], 'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],'Last 7 Days': [moment().subtract(6, 'days'), moment()],'Last 30 Days': [moment().subtract(29, 'days'), moment()],'This Month': [moment().startOf('month'), moment().endOf('month')],'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')] } }, cb);
                 cb(start, end);
+                
+                $('#export-csv-btn').on('click', function() {
+                    if ($(this).is(':disabled')) { return; }
+                    const date_start = $('#date_start').val();
+                    const date_end = $('#date_end').val();
+                    const report_level = $('#report_level').val();
+                    const filter_id = $('#filter_id').val();
+                    let exportUrl = `admin.php?action=export_csv&date_start=${date_start}&date_end=${date_end}&report_level=${report_level}`;
+                    if (filter_id) { exportUrl += `&filter_id=${filter_id}`; }
+                    window.location.href = exportUrl;
+                });
+
                 $('#report_level').on('change', function() {
                     const level = $(this).val(); const filterSelect = $('#filter_id');
                     filterSelect.prop('disabled', true).html('<option>Loading...</option>');
@@ -500,6 +626,99 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
                         alert('Please select an item from the dropdown.');
                     }
                 });
+            }
+            
+            if (currentPage === 'csmform') {
+                const start = moment('<?php echo e($date_start); ?>'); const end = moment('<?php echo e($date_end); ?>');
+                function cb(start, end) { $('#csm_reportrange span').html(start.format('MMMM D,YYYY') + ' - ' + end.format('MMMM D,YYYY')); $('#csm_date_start').val(start.format('YYYY-MM-DD')); $('#csm_date_end').val(end.format('YYYY-MM-DD')); }
+                $('#csm_reportrange').daterangepicker({ startDate: start, endDate: end, ranges: { 'Today': [moment(), moment()], 'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],'Last 7 Days': [moment().subtract(6, 'days'), moment()],'Last 30 Days': [moment().subtract(29, 'days'), moment()],'This Month': [moment().startOf('month'), moment().endOf('month')],'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')] } }, cb);
+                cb(start, end);
+
+                // *** NEW: JS for CSM Data Page enhancements ***
+                $('#f_department_id').on('change', function() {
+                    const deptId = $(this).val();
+                    const serviceSelect = $('#f_service_id');
+                    serviceSelect.html('<option value="">-- All Services --</option>').prop('disabled', true);
+                    if (deptId) {
+                        serviceSelect.prop('disabled', true).html('<option value="">Loading...</option>');
+                        $.get('admin.php', { action: 'get_services_for_dept', department_id: deptId }, function(data) {
+                            let options = '<option value="">-- All Services --</option>';
+                            data.forEach(function(item) {
+                                options += `<option value="${item.id}">${item.name}</option>`;
+                            });
+                            serviceSelect.html(options).prop('disabled', false);
+                        }, 'json');
+                    }
+                });
+
+                $('#export-csm-data-btn').on('click', function() {
+                    const form = $('#csmDataFilterForm');
+                    const queryParams = form.serialize();
+                    window.location.href = `admin.php?action=export_csm_data_csv&${queryParams}`;
+                });
+
+                const responseModal = new bootstrap.Modal(document.getElementById('viewResponseModal'));
+                $('.view-response-btn').on('click', function() {
+                    const responseId = $(this).data('id');
+                    $('#response-details-content').html('<p class="text-center">Loading details...</p>');
+                    responseModal.show();
+                    
+                    $.get('admin.php', { action: 'get_response_details', id: responseId }, function(res) {
+                        if (res.success) {
+                            renderResponseDetails(res.data);
+                        } else {
+                            $('#response-details-content').html(`<div class="alert alert-danger">${res.message}</div>`);
+                        }
+                    }, 'json');
+                });
+
+                function renderResponseDetails(data) {
+                    const cc_options = { 1: "I know what a CC is and I saw this office's CC.", 2: "I know what a CC is but I did NOT see this office's CC.", 3: "I learned of the CC only when I saw this office's CC.", 4: "I do not know what a CC is and I did not see one in this office." };
+                    const cc2_options = { 1: "Easy to see", 2: "Somewhat easy to see", 3: "Difficult to see", 4: "Not visible at all", 'null': "N/A" };
+                    const cc3_options = { 1: "Helped very much", 2: "Somewhat helped", 3: "Did not help", 'null': "N/A" };
+                    const sqd_scores = {1: 'Strongly Disagree', 2: 'Disagree', 3: 'Neither Agree nor Disagree', 4: 'Agree', 5: 'Strongly Agree', 'null': 'N/A' };
+                    
+                    let sqdRows = '';
+                    const sqdQuestions = ["SQD0. I am satisfied with the service that I availed.", "SQD1. I spent a reasonable amount of time for my transaction.", "SQD2. The office followed the transaction's requirements and steps based on the information provided.", "SQD3. The steps (including payment) I needed to do for my transaction were easy and simple.", "SQD4. I could easily find information about my transaction from the office or its website.", "SQD5. I paid a reasonable amount of fees for my transaction.", "SQD6. I feel the office was fair to everyone, or 'walang palakasan', during my transaction.", "SQD7. I was treated courteously by the staff, and the staff I approached for help were helpful.", "SQD8. I got what I needed from the government office, or (if denied) denial of request was sufficiently explained to me."];
+                    sqdQuestions.forEach((q, i) => {
+                        const score = data[`sqd${i}`];
+                        const scoreText = sqd_scores[String(score)] || 'N/A';
+                        sqdRows += `<tr><td class="text-start">${q}</td><td>${scoreText}</td></tr>`;
+                    });
+
+                    const html = `
+                        <h5>Feedback ID: ${data.id}</h5>
+                        <p class="text-muted">Submitted on ${moment(data.submission_date).format('MMMM D, YYYY, h:mm:ss a')}</p>
+                        <hr>
+                        <h6>Client & Service Information</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-6"><label class="form-label">Department</label><input type="text" class="form-control-plaintext" value="${data.department_name}" readonly></div>
+                            <div class="col-md-6"><label class="form-label">Service Availed</label><input type="text" class="form-control-plaintext" value="${data.service_name}" readonly></div>
+                            <div class="col-md-3"><label class="form-label">Client Type</label><input type="text" class="form-control-plaintext" value="${data.client_type || 'N/A'}" readonly></div>
+                            <div class="col-md-3"><label class="form-label">Affiliation</label><input type="text" class="form-control-plaintext" value="${data.affiliation || 'N/A'}" readonly></div>
+                            <div class="col-md-2"><label class="form-label">Sex</label><input type="text" class="form-control-plaintext" value="${data.sex || 'N/A'}" readonly></div>
+                            <div class="col-md-2"><label class="form-label">Age</label><input type="text" class="form-control-plaintext" value="${data.age || 'N/A'}" readonly></div>
+                            <div class="col-md-2"><label class="form-label">Email</label><input type="text" class="form-control-plaintext" value="${data.email_address || 'N/A'}" readonly></div>
+                        </div>
+                        <hr>
+                        <h6>Citizen's Charter (CC)</h6>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">CC1. Awareness of CC</label>
+                            <p class="form-control-plaintext">${cc_options[data.cc1] || 'N/A'}</p>
+                        </div>
+                        <div class="row mb-3">
+                           <div class="col-md-6"><label class="form-label fw-bold">CC2. Visibility of CC</label><p class="form-control-plaintext">${cc2_options[data.cc2] || 'N/A'}</p></div>
+                           <div class="col-md-6"><label class="form-label fw-bold">CC3. Helpfulness of CC</label><p class="form-control-plaintext">${cc3_options[data.cc3] || 'N/A'}</p></div>
+                        </div>
+                        <hr>
+                        <h6>Service Quality Dimensions (SQD)</h6>
+                        <table class="table table-bordered table-sm"><thead><tr><th>Question</th><th>Response</th></tr></thead><tbody>${sqdRows}</tbody></table>
+                        <hr>
+                        <h6>Suggestions / Remarks</h6>
+                        <textarea class="form-control" readonly rows="4">${data.suggestions || '(No suggestions provided)'}</textarea>
+                    `;
+                    $('#response-details-content').html(html);
+                }
             }
 
             if (currentPage === 'users') {

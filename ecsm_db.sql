@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jul 04, 2025 at 07:16 AM
+-- Generation Time: Jul 04, 2025 at 08:19 AM
 -- Server version: 10.6.22-MariaDB-0ubuntu0.22.04.1
 -- PHP Version: 8.4.7
 
@@ -132,7 +132,8 @@ INSERT INTO `settings` (`id`, `setting_name`, `setting_value`) VALUES
 (2, 'province_name', 'Misamis Oriental'),
 (3, 'region_name', 'Region X'),
 (4, 'agency_logo', '68662fd59fb21_LGU-GINGOOG LOGO SMALL.png'),
-(5, 'password_complexity', 'medium');
+(5, 'password_complexity', 'medium'),
+(6, 'timezone', 'Asia/Manila');
 
 -- --------------------------------------------------------
 
@@ -221,7 +222,7 @@ ALTER TABLE `services`
 -- AUTO_INCREMENT for table `settings`
 --
 ALTER TABLE `settings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `users`
