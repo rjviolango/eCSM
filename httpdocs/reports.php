@@ -1,7 +1,72 @@
 <?php
 // eCSM - ARTA-2242-3
 // reports.php - Included by admin.php (Final Version with All Fixes)
-
+?>
+<style>
+@media print {
+    body, html {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        background-color: #fff; /* Make background white for printing */
+    }
+    .main-content, .card-body, .report-section {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .sidebar, .navbar, .footer, .card-header, #reportFilterForm, .d-flex.justify-content-end.mb-3, .btn {
+        display: none !important; /* Hide non-report elements */
+    }
+    #printableReportArea {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        font-size: 10pt; /* Adjust font size for print */
+    }
+    .report-section {
+        page-break-inside: avoid; /* Try to keep sections from splitting across pages */
+        margin-bottom: 20px;
+    }
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .table th, .table td {
+        border: 1px solid #dee2e6;
+        padding: .4rem;
+    }
+    .table-light th {
+        background-color: #f8f9fa !important; /* Ensure background color prints */
+        -webkit-print-color-adjust: exact; 
+        print-color-adjust: exact;
+    }
+    .badge {
+        border: 1px solid #000; /* Make badges visible */
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .text-center {
+        text-align: center;
+    }
+    .mb-4 {
+        margin-bottom: 1.5rem !important;
+    }
+    h4, h5, h6, .lead {
+        margin: 0;
+        padding: 5px 0;
+    }
+    /* Ensure colors print for badges */
+    .bg-success { background-color: #198754 !important; color: white !important; }
+    .bg-primary { background-color: #0d6efd !important; color: white !important; }
+    .bg-info { background-color: #0dcaf0 !important; color: black !important; }
+    .bg-warning { background-color: #ffc107 !important; color: black !important; }
+    .bg-danger { background-color: #dc3545 !important; color: white !important; }
+}
+</style>
+<?php
 // --- REPORTING HELPER FUNCTIONS ---
 function getRating($score) {
     if ($score >= 95) return '<span class="badge bg-success">Outstanding</span>';
@@ -24,10 +89,11 @@ if ($show_report) {
     $params[':date_start'] = $date_start;
     $params[':date_end_plus_one'] = date('Y-m-d', strtotime($date_end . ' +1 day'));
     
-    $report_level = $_GET['report_level'] ?? 'agency';
-    if (!is_admin()) {
-        // Force dept users to their own department scope for security
-        $report_level = in_array($report_level, ['department', 'service']) ? $report_level : 'department';
+    $report_level = $_GET['report_level'] ?? (is_admin() ? 'agency' : 'department');
+    if (!is_admin() && !in_array($report_level, ['department', 'service'])) {
+        // A non-admin user is trying to access a report level they shouldn't.
+        // Default them to 'department' level for security.
+        $report_level = 'department';
     }
 
     $filter_id = !empty($_GET['filter_id']) ? (int)$_GET['filter_id'] : null;
