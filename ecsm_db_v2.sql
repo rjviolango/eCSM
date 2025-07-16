@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jul 16, 2025 at 05:43 AM
+-- Generation Time: Jul 16, 2025 at 07:12 AM
 -- Server version: 10.6.22-MariaDB-0ubuntu0.22.04.1
 -- PHP Version: 8.4.7
 
@@ -68,28 +68,6 @@ CREATE TABLE `csm_responses` (
   `client_email` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `csm_responses`
---
-
-INSERT INTO `csm_responses` (`id`, `service_id`, `submission_date`, `affiliation`, `client_type`, `age`, `sex`, `region_of_residence`, `preferred_language`, `ref_id`, `cc1`, `cc2`, `cc3`, `sqd0`, `sqd1`, `sqd2`, `sqd3`, `sqd4`, `sqd5`, `sqd6`, `sqd7`, `sqd8`, `suggestions`, `email_address`, `client_email`) VALUES
-(1, 3, '2025-07-03 08:06:17', 'External', 'Government', NULL, 'Male', 'Northern Mindanao (Region X)', NULL, NULL, 4, NULL, NULL, NULL, 5, 5, 5, 5, 5, 5, 5, 5, 'bad service', '', NULL),
-(2, 3, '2025-07-03 08:08:43', 'External', 'Citizen', 20, 'Male', 'Northern Mindanao (Region X)', NULL, NULL, 4, NULL, NULL, 4, 4, 2, 3, 3, 2, 3, 2, 3, 'Sakit vaccine', '', NULL),
-(3, 3, '2025-07-03 08:21:34', 'External', 'Government', NULL, 'Male', 'Northern Mindanao (Region X)', NULL, NULL, 3, 2, 1, 1, 4, 5, 3, 5, 3, 5, 3, 5, 'ahaha', '', NULL),
-(4, 1, '2025-07-04 03:12:52', 'External', 'Government', 25, 'Male', 'Northern Mindanao (Region X)', NULL, NULL, 4, NULL, NULL, 5, 5, 5, 5, 5, 5, 5, 5, 5, 'Great service', '', NULL),
-(5, 4, '2025-07-04 05:47:57', 'Internal', 'Government', NULL, 'Male', 'Northern Mindanao (Region X)', NULL, NULL, 4, NULL, NULL, 5, 5, 5, 5, 5, 5, 5, 5, 5, '', '', NULL),
-(6, 1, '2025-07-15 06:38:37', 'External', 'Business', NULL, 'Female', 'Northern Mindanao (Region X)', NULL, NULL, 4, NULL, NULL, 5, 5, 5, 4, 3, 3, 4, 4, 4, '', '', NULL),
-(7, 2, '2025-07-15 06:39:50', 'Internal', 'Business', NULL, 'Male', 'Northern Mindanao (Region X)', NULL, NULL, 2, 3, 1, 2, 2, 3, 3, 3, 4, 3, 4, 3, '55', '', NULL),
-(8, 2, '2025-07-15 06:41:36', 'Internal', 'Government', NULL, 'Male', 'Northern Mindanao (Region X)', NULL, NULL, 1, 2, 2, 4, 3, 4, 3, 4, 3, 4, 3, 4, '', '', NULL),
-(9, 2, '2025-07-15 08:18:25', 'Internal', 'Business', NULL, 'Male', 'Northern Mindanao (Region X)', NULL, NULL, 4, NULL, NULL, 4, 4, 4, 4, 4, 4, 4, 4, 4, 'Check me', '', NULL),
-(10, 4, '2025-07-15 08:38:11', 'Internal', 'Citizen', NULL, NULL, 'Northern Mindanao (Region X)', NULL, NULL, 4, NULL, NULL, 5, 5, 5, 5, 5, 5, 5, 5, 5, 'This is a test', '', NULL),
-(11, 4, '2025-07-15 08:38:36', 'Internal', 'Citizen', NULL, NULL, 'Northern Mindanao (Region X)', NULL, NULL, 4, NULL, NULL, 5, 5, 5, 5, 5, 5, 5, 5, 5, 'This is a test', '', NULL),
-(12, 4, '2025-07-15 08:47:22', 'Internal', 'Government', NULL, 'Male', 'Northern Mindanao (Region X)', NULL, NULL, 4, NULL, NULL, 5, 5, 5, 5, 5, 5, 5, 5, 5, '', '', NULL),
-(13, 1, '2025-07-15 08:51:35', 'External', 'Citizen', NULL, 'Male', 'Northern Mindanao (Region X)', NULL, NULL, 4, NULL, NULL, 3, 3, 3, 3, 3, 3, 3, 3, 3, '', '', NULL),
-(14, 3, '2025-07-16 03:24:21', 'External', 'Business', NULL, 'Male', 'Northern Mindanao (Region X)', NULL, NULL, 4, NULL, NULL, 5, 5, 5, 5, 5, 5, 5, 5, 5, '', '', NULL),
-(15, 3, '2025-07-16 04:59:21', 'External', 'Government', NULL, 'Male', 'Northern Mindanao (Region X)', NULL, '012', 1, 2, 1, 4, 5, 4, 5, 4, 5, 4, 5, 4, '', '', NULL),
-(16, 3, '2025-07-16 05:29:42', 'External', 'Business', NULL, 'Female', 'Northern Mindanao (Region X)', NULL, '123', 4, NULL, NULL, 2, 3, 4, 3, 2, 3, 4, 3, 2, '', '', NULL);
-
 -- --------------------------------------------------------
 
 --
@@ -106,10 +84,24 @@ CREATE TABLE `departments` (
 --
 
 INSERT INTO `departments` (`id`, `name`) VALUES
-(1, 'City Mayor\'s Office'),
-(2, 'Human Resource Management Office'),
-(3, 'City Health Office'),
-(4, 'IT Office');
+(1, 'City Mayor’s Office (CMO)'),
+(5, 'Sanguniang Panlungsod (SP)'),
+(6, 'City Agriculturist’s Office (AGGIES)'),
+(7, 'City Assessor’s Office (ASSESSOR)'),
+(8, 'City Accountant’s Office (ACCTNG), City Budget Office (BUDGET) & City Treasurer’s Office (CTO)'),
+(9, 'City Disaster Risk Reduction and Management Office (CDRRMO)'),
+(10, 'City Economic Enterprise Department (CEED)'),
+(11, 'City Engineer’s Office (CEO)'),
+(12, 'City Health Office'),
+(13, 'City Planning and Development Office (CPDO)'),
+(14, 'City Social Welfare and Development Office'),
+(15, 'City Veterinarian’s Office'),
+(16, 'Local Civil Registrar’s Office (LCR)'),
+(17, 'General Services Office (GSO)'),
+(18, 'City Environment & Natural Resources Management Office (CENRMO)'),
+(19, 'City Investment Promotions Office (CIPO)'),
+(20, 'City Tourism Office (TOURISM)'),
+(21, 'City Internal Audit Services Department (CIASD)');
 
 -- --------------------------------------------------------
 
@@ -131,10 +123,27 @@ CREATE TABLE `services` (
 --
 
 INSERT INTO `services` (`id`, `department_id`, `service_name`, `service_details_html`, `service_type`, `is_active`) VALUES
-(1, 1, 'Processing of Business Permit', '<p>Standard processing of new business permits and renewals.</p>', 'External', 1),
-(2, 2, 'Leave Application Processing', '<p>For all city government employees.</p>', 'Internal', 1),
-(3, 3, 'Vaccination Drive', '<p>Public vaccination services.</p>', 'External', 1),
-(4, 4, 'IT Support Request', 'Provides technical assistance for hardware and software issues for employees.', 'Internal', 1);
+(5, 1, 'Business Permit (New Registration/Renewal) Issuance', '', 'External', 1),
+(6, 1, 'Business Permit to Tricycle/Motorela and Trisikad Operators  (New Registration/Renewal) Issuance', '', 'External', 1),
+(7, 1, 'Mayor’s Clearance Issuance', '', 'External', 1),
+(8, 1, 'Motorized Tricycle Operator’s Permit (MTOP)  (New Registration/Renewal) Issuance', '', 'External', 1),
+(9, 1, 'Occupational Permit Issuance', NULL, 'External', 1),
+(10, 1, 'Retirement of Business and Certification of Cessation', NULL, 'External', 1),
+(11, 1, 'Rental of Tractor and Farm Equipment', NULL, 'External', 1),
+(12, 1, 'Rental of Water Pump and Other Agri-Equipment', NULL, 'External', 1),
+(13, 1, 'Issuance of Appointment – Regular', NULL, 'External', 1),
+(14, 1, 'Issuance of Appointment – Casual', NULL, 'External', 1),
+(15, 1, 'PESO Certification for Job Seekers', NULL, 'External', 1),
+(16, 1, 'PESO Certification for Returning OFWs who did not finish their\r\n', NULL, 'External', 1),
+(17, 1, 'Scholarship Contract Issuance', NULL, 'External', 1),
+(18, 1, 'Technical Vocational Education and Training Certification', NULL, 'External', 1),
+(19, 1, 'Provision of Administrative Case Investigation', NULL, 'External', 1),
+(20, 1, 'Provision of Free Legal Consultation/Service', NULL, 'External', 1),
+(21, 1, 'Provision of Document/s Available at the City Legal Office', NULL, 'External', 1),
+(22, 1, 'Rendition of Legal Opinion', NULL, 'External', 1),
+(23, 1, 'City Museum Tour', NULL, 'External', 1),
+(24, 1, 'Borrowing or Photocopying of Library Books/Materials', NULL, 'External', 1),
+(25, 1, 'Search Learning Materials via Internet at the Library', NULL, 'External', 1);
 
 -- --------------------------------------------------------
 
@@ -156,7 +165,7 @@ INSERT INTO `settings` (`id`, `setting_name`, `setting_value`) VALUES
 (1, 'agency_name', 'CITY GOVERNMENT OF GINGOOG'),
 (2, 'province_name', 'Misamis Oriental'),
 (3, 'region_name', 'Region X'),
-(4, 'agency_logo', '68662fd59fb21_LGU-GINGOOG LOGO SMALL.png'),
+(4, 'agency_logo', '2737c3964149c007f15a29b9ea079b06.png'),
 (5, 'password_complexity', 'medium'),
 (6, 'timezone', 'Asia/Manila');
 
@@ -192,30 +201,13 @@ CREATE TABLE `system_logs` (
 --
 
 INSERT INTO `system_logs` (`id`, `user_id`, `ip_address`, `user_agent`, `action`, `timestamp`) VALUES
-(0, NULL, '49.146.8.157', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36', 'CSM feedback submitted for service ID 1', '2025-07-15 06:38:37'),
-(0, NULL, '49.146.8.157', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'CSM feedback submitted for service ID 2', '2025-07-15 06:39:50'),
-(0, NULL, '49.146.8.157', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'CSM feedback submitted for service ID 2', '2025-07-15 06:41:36'),
-(0, NULL, '49.146.8.157', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'CSM feedback submitted for service ID 2', '2025-07-15 08:18:25'),
-(0, NULL, '49.146.8.157', 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36', 'CSM feedback submitted for service ID 4', '2025-07-15 08:38:11'),
-(0, NULL, '49.146.8.157', 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36', 'CSM feedback submitted for service ID 4', '2025-07-15 08:38:36'),
-(0, 1, '49.146.8.157', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'User logged in', '2025-07-15 08:39:19'),
-(0, NULL, '49.146.8.157', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'CSM feedback submitted for service ID 4', '2025-07-15 08:47:22'),
-(0, NULL, '49.146.8.157', 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36', 'CSM feedback submitted for service ID 1', '2025-07-15 08:51:35'),
-(0, 1, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'User logged in', '2025-07-16 02:52:48'),
-(0, 2, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'User logged in', '2025-07-16 02:58:03'),
-(0, 1, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'User logged in', '2025-07-16 03:06:51'),
-(0, NULL, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'CSM feedback submitted for service ID 3', '2025-07-16 03:24:21'),
-(0, NULL, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'CSM feedback submitted for service ID 3', '2025-07-16 04:59:21'),
-(0, 1, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'User logged in', '2025-07-16 04:59:31'),
-(0, 1, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'Updated service \'IT Support Request\'', '2025-07-16 05:10:09'),
-(0, 1, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'Updated service \'IT Support Request\'', '2025-07-16 05:11:08'),
-(0, 1, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'Deleted user with ID 2', '2025-07-16 05:11:27'),
-(0, 1, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'Added new user \'user\'', '2025-07-16 05:11:41'),
-(0, 1, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'Updated user \'user\'', '2025-07-16 05:11:51'),
-(0, 1, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'Updated user \'user\'', '2025-07-16 05:12:50'),
-(0, 1, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'Updated system settings', '2025-07-16 05:19:03'),
-(0, NULL, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'Failed reCAPTCHA verification for: 49.146.7.228', '2025-07-16 05:29:33'),
-(0, NULL, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'CSM feedback submitted for service ID 3', '2025-07-16 05:29:42');
+(1, NULL, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'CSM feedback submitted for service ID 24', '2025-07-16 06:50:31'),
+(2, 1, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'Updated system settings', '2025-07-16 06:52:14'),
+(3, 1, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'Added new service \'test\'', '2025-07-16 06:57:16'),
+(4, 1, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'Deleted service with ID 27', '2025-07-16 06:57:26'),
+(5, 1, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'Added new service \'test\'', '2025-07-16 07:09:28'),
+(6, 1, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'Updated service \'Business Permit (New Registration/Renewal) Issuance\'', '2025-07-16 07:09:55'),
+(7, 1, '49.146.7.228', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'Deleted service with ID 28', '2025-07-16 07:10:00');
 
 -- --------------------------------------------------------
 
@@ -271,6 +263,12 @@ ALTER TABLE `settings`
   ADD UNIQUE KEY `setting_name` (`setting_name`);
 
 --
+-- Indexes for table `system_logs`
+--
+ALTER TABLE `system_logs`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -286,25 +284,31 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `csm_responses`
 --
 ALTER TABLE `csm_responses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `departments`
 --
 ALTER TABLE `departments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `services`
 --
 ALTER TABLE `services`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- AUTO_INCREMENT for table `settings`
 --
 ALTER TABLE `settings`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `system_logs`
+--
+ALTER TABLE `system_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `users`

@@ -15,8 +15,9 @@ $logs = $pdo->query("SELECT sl.*, u.username FROM system_logs sl LEFT JOIN users
         <h5><i class="bi bi-journal-text"></i> System Logs</h5>
     </div>
     <div class="card-body">
+        <?php if (count($logs) > 0): ?>
         <div class="table-responsive">
-            <table class="table table-striped table-hover">
+            <table id="datatable" class="table table-striped table-hover">
                 <thead class="table-light">
                     <tr>
                         <th>ID</th>
@@ -28,7 +29,6 @@ $logs = $pdo->query("SELECT sl.*, u.username FROM system_logs sl LEFT JOIN users
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (count($logs) > 0): ?>
                         <?php foreach($logs as $log): ?>
                         <tr>
                             <td><?php echo $log['id']; ?></td>
@@ -39,13 +39,11 @@ $logs = $pdo->query("SELECT sl.*, u.username FROM system_logs sl LEFT JOIN users
                             <td><?php echo e($log['user_agent']); ?></td>
                         </tr>
                         <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="6" class="text-center">No logs found.</td>
-                        </tr>
-                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
+        <?php else: ?>
+            <div class="alert alert-info">No logs found.</div>
+        <?php endif; ?>
     </div>
 </div>

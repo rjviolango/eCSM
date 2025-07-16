@@ -195,10 +195,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $allowed_settings = ['agency_name', 'province_name', 'region_name', 'password_complexity', 'timezone'];
         foreach ($allowed_settings as $setting) { if (isset($_POST[$setting])) { $stmt = $pdo->prepare("UPDATE settings SET setting_value = ? WHERE setting_name = ?"); $stmt->execute([$_POST[$setting], $setting]); } }
         if (isset($_FILES['agency_logo']) && $_FILES['agency_logo']['error'] == 0) {
-            $target_dir = "img/"; if (!is_dir($target_dir)) { mkdir($target_dir, 0755, true); }
-            $filename = uniqid() . '_' . basename($_FILES["agency_logo"]["name"]); $target_file = $target_dir . $filename;
-            $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION)); $check = getimagesize($_FILES["agency_logo"]["tmp_name"]);
-            if($check !== false && in_array($imageFileType, ['jpg', 'png', 'jpeg', 'gif'])) { if (move_uploaded_file($_FILES["agency_logo"]["tmp_name"], $target_file)) { $stmt = $pdo->prepare("UPDATE settings SET setting_value = ? WHERE setting_name = 'agency_logo'"); $stmt->execute([$filename]); } }
+            $target_dir = "img/";
+            if (!is_dir($target_dir)) { mkdir($target_dir, 0755, true); }
+            
+            $file_info = getimagesize($_FILES["agency_logo"]["tmp_name"]);
+            if ($file_info !== false) {
+                $extension = image_type_to_extension($file_info[2]);
+                if (in_array($extension, ['.jpg', '.png', '.jpeg', '.gif'])) {
+                    $random_name = bin2hex(random_bytes(16)) . $extension;
+                    $target_file = $target_dir . $random_name;
+                    if (move_uploaded_file($_FILES["agency_logo"]["tmp_name"], $target_file)) {
+                        $stmt = $pdo->prepare("UPDATE settings SET setting_value = ? WHERE setting_name = 'agency_logo'");
+                        $stmt->execute([$random_name]);
+                    }
+                }
+            }
         }
         log_system_action($pdo, $_SESSION['user_id'], 'Updated system settings');
         $action_message = '<div class="alert alert-success">Settings updated successfully.</div>';
@@ -206,12 +217,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->query("SELECT setting_name, setting_value FROM settings"); while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { $CONFIG[$row['setting_name']] = $row['setting_value']; }
     }
     if ($page === 'services' && isset($_POST['save_service'])) {
-        $service_id = filter_input(INPUT_POST, 'service_id', FILTER_VALIDATE_INT); $department_id = filter_input(INPUT_POST, 'department_id', FILTER_VALIDATE_INT);
-        $service_name = trim($_POST['service_name']); $service_type = $_POST['service_type'];
-        $service_details_html = trim($_POST['service_details_html']); $is_active = isset($_POST['is_active']) ? 1 : 0;
-        if (!is_admin() && $department_id != $_SESSION['department_id']) { $action_message = '<div class="alert alert-danger">Access Denied.</div>'; } else {
-            if ($service_id) { $stmt = $pdo->prepare("UPDATE services SET department_id=?, service_name=?, service_type=?, service_details_html=?, is_active=? WHERE id=?"); $stmt->execute([$department_id, $service_name, $service_type, $service_details_html, $is_active, $service_id]); log_system_action($pdo, $_SESSION['user_id'], "Updated service '{$service_name}'"); $action_message = '<div class="alert alert-success">Service updated.</div>';
-            } else { $stmt = $pdo->prepare("INSERT INTO services (department_id, service_name, service_type, service_details_html, is_active) VALUES (?, ?, ?, ?, ?)"); $stmt->execute([$department_id, $service_name, $service_type, $service_details_html, $is_active]); log_system_action($pdo, $_SESSION['user_id'], "Added new service '{$service_name}'"); $action_message = '<div class="alert alert-success">Service added.</div>'; }
+        $service_id = filter_input(INPUT_POST, 'service_id', FILTER_VALIDATE_INT);
+        $department_id = filter_input(INPUT_POST, 'department_id', FILTER_VALIDATE_INT);
+        $service_name = trim($_POST['service_name']);
+        $service_type = $_POST['service_type'];
+        $service_details_html = trim($_POST['service_details_html']);
+        $is_active = isset($_POST['is_active']) ? 1 : 0;
+        if (!is_admin() && $department_id != $_SESSION['department_id']) {
+            $action_message = '<div class="alert alert-danger">Access Denied.</div>';
+        } else {
+            if (empty($service_name) || empty($service_type)) {
+                $action_message = '<div class="alert alert-danger">Service name and type are required.</div>';
+            } elseif (strlen($service_name) > 255) {
+                $action_message = '<div class="alert alert-danger">Service name cannot be longer than 255 characters.</div>';
+            } else {
+                if ($service_id) {
+                    $stmt = $pdo->prepare("UPDATE services SET department_id=?, service_name=?, service_type=?, service_details_html=?, is_active=? WHERE id=?");
+                    $stmt->execute([$department_id, $service_name, $service_type, $service_details_html, $is_active, $service_id]);
+                    log_system_action($pdo, $_SESSION['user_id'], "Updated service '{$service_name}'");
+                    $action_message = '<div class="alert alert-success">Service updated.</div>';
+                } else {
+                    $stmt = $pdo->prepare("INSERT INTO services (department_id, service_name, service_type, service_details_html, is_active) VALUES (?, ?, ?, ?, ?)");
+                    $stmt->execute([$department_id, $service_name, $service_type, $service_details_html, $is_active]);
+                    log_system_action($pdo, $_SESSION['user_id'], "Added new service '{$service_name}'");
+                    $action_message = '<div class="alert alert-success">Service added.</div>';
+                }
+            }
         }
     }
     if ($page === 'services' && isset($_POST['delete_service'])) {
@@ -220,8 +251,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (is_admin() || $service_dept == $_SESSION['department_id']) { $stmt = $pdo->prepare("DELETE FROM services WHERE id = ?"); $stmt->execute([$service_id]); log_system_action($pdo, $_SESSION['user_id'], "Deleted service with ID {$service_id}"); $action_message = '<div class="alert alert-success">Service deleted.</div>'; }
     }
     if (is_admin() && $page === 'departments' && isset($_POST['save_department'])) {
-        $dept_id = filter_input(INPUT_POST, 'department_id', FILTER_VALIDATE_INT); $dept_name = trim($_POST['department_name']);
-        if (!empty($dept_name)) { if ($dept_id) { $stmt = $pdo->prepare("UPDATE departments SET name = ? WHERE id = ?"); $stmt->execute([$dept_name, $dept_id]); log_system_action($pdo, $_SESSION['user_id'], "Updated department '{$dept_name}'"); } else { $stmt = $pdo->prepare("INSERT INTO departments (name) VALUES (?)"); $stmt->execute([$dept_name]); log_system_action($pdo, $_SESSION['user_id'], "Added new department '{$dept_name}'"); } $action_message = '<div class="alert alert-success">Department saved.</div>'; }
+        $dept_id = filter_input(INPUT_POST, 'department_id', FILTER_VALIDATE_INT);
+        $dept_name = trim($_POST['department_name']);
+        if (!empty($dept_name)) {
+            if (strlen($dept_name) > 255) {
+                $action_message = '<div class="alert alert-danger">Department name cannot be longer than 255 characters.</div>';
+            } else {
+                if ($dept_id) {
+                    $stmt = $pdo->prepare("UPDATE departments SET name = ? WHERE id = ?");
+                    $stmt->execute([$dept_name, $dept_id]);
+                    log_system_action($pdo, $_SESSION['user_id'], "Updated department '{$dept_name}'");
+                } else {
+                    $stmt = $pdo->prepare("INSERT INTO departments (name) VALUES (?)");
+                    $stmt->execute([$dept_name]);
+                    log_system_action($pdo, $_SESSION['user_id'], "Added new department '{$dept_name}'");
+                }
+                $action_message = '<div class="alert alert-success">Department saved.</div>';
+            }
+        }
     }
     if (is_admin() && $page === 'departments' && isset($_POST['delete_department'])) { $dept_id = filter_input(INPUT_POST, 'department_id', FILTER_VALIDATE_INT); $stmt = $pdo->prepare("DELETE FROM departments WHERE id = ?"); $stmt->execute([$dept_id]); log_system_action($pdo, $_SESSION['user_id'], "Deleted department with ID {$dept_id}"); $action_message = '<div class="alert alert-success">Department deleted.</div>'; }
     if (is_admin() && $page === 'users' && isset($_POST['save_user'])) {
@@ -233,6 +280,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Ensure department_id is valid or null
         if ($role === 'dept' && empty($department_id)) {
             $action_message = '<div class="alert alert-danger">A department must be selected for department-level users.</div>';
+        } elseif (empty($username) || empty($role)) {
+            $action_message = '<div class="alert alert-danger">Username and role are required.</div>';
+        } elseif (strlen($username) > 255) {
+            $action_message = '<div class="alert alert-danger">Username cannot be longer than 255 characters.</div>';
         } else {
             if ($user_id) {
                 $stmt = $pdo->prepare("UPDATE users SET username = ?, role = ?, department_id = ? WHERE id = ?");
@@ -273,6 +324,7 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
     <meta charset="UTF-8"><title>eCSM Admin Panel</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         :root { --sidebar-width: 280px; }
@@ -364,27 +416,39 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
                 $service_sql .= " ORDER BY s.service_name";
                 $services = $pdo->query($service_sql)->fetchAll(PDO::FETCH_ASSOC);
                 ?>
-                <div class="card"><div class="card-header">Existing Services</div><div class="card-body"><div class="table-responsive"><table class="table table-striped table-hover"><thead><tr><th>ID</th><th>Name</th><th>Department</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+                <div class="card"><div class="card-header">Existing Services</div><div class="card-body">
+                <?php if (count($services) > 0): ?>
+                <div class="table-responsive"><table id="datatable" class="table table-striped table-hover"><thead><tr><th>ID</th><th>Name</th><th>Department</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead><tbody>
                 <?php foreach($services as $service): ?>
                 <tr><td><?php echo e($service['id']); ?></td><td><?php echo e($service['service_name']); ?></td><td><?php echo e($service['dept_name']); ?></td><td><?php echo e($service['service_type']); ?></td><td><?php echo $service['is_active'] ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Disabled</span>'; ?></td>
                 <td>
                     <button class="btn btn-sm btn-primary edit-service-btn" data-bs-toggle="modal" data-bs-target="#servicesModal" data-id="<?php echo $service['id'];?>" data-name="<?php echo e($service['service_name']);?>" data-deptid="<?php echo $service['department_id'];?>" data-type="<?php echo $service['service_type'];?>" data-details="<?php echo e($service['service_details_html']);?>" data-active="<?php echo $service['is_active'];?>"><i class="bi bi-pencil-fill"></i></button>
                     <button class="btn btn-sm btn-success generate-qr-btn" data-bs-toggle="modal" data-bs-target="#qrCodeModal" data-service-id="<?php echo $service['id'];?>" data-service-name="<?php echo e($service['service_name']);?>"><i class="bi bi-qr-code"></i> QR</button>
-                    <form action="admin.php?page=services" method="POST" class="d-inline" onsubmit="return confirm('Are you sure?');"><input type="hidden" name="service_id" value="<?php echo $service['id']; ?>"><button type="submit" name="delete_service" class="btn btn-sm btn-danger"><i class="bi bi-trash-fill"></i></button></form>
-                </td></tr><?php endforeach; ?></tbody></table></div></div></div>
+                    <form action="admin.php?page=services" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this service?');"><input type="hidden" name="service_id" value="<?php echo $service['id']; ?>"><button type="submit" name="delete_service" class="btn btn-sm btn-danger"><i class="bi bi-trash-fill"></i></button></form>
+                </td></tr><?php endforeach; ?></tbody></table></div>
+                <?php else: ?>
+                    <div class="alert alert-info">No services found.</div>
+                <?php endif; ?>
+                </div></div>
                 <?php
                 break;
             case 'departments':
                 if(is_admin()) {
                     $departments = $pdo->query("SELECT * FROM departments ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
                     ?>
-                    <div class="card"><div class="card-header">Existing Departments</div><div class="card-body"><div class="table-responsive"><table class="table table-striped"><thead><tr><th>Name</th><th>Actions</th></tr></thead><tbody>
+                    <div class="card"><div class="card-header">Existing Departments</div><div class="card-body">
+                    <?php if (count($departments) > 0): ?>
+                    <div class="table-responsive"><table id="datatable" class="table table-striped"><thead><tr><th>Name</th><th>Actions</th></tr></thead><tbody>
                     <?php foreach($departments as $dept): ?>
                     <tr><td><?php echo e($dept['name']); ?></td><td>
                     <button class="btn btn-sm btn-primary edit-dept-btn" data-bs-toggle="modal" data-bs-target="#departmentsModal" data-id="<?php echo $dept['id'];?>" data-name="<?php echo e($dept['name']);?>">Edit</button>
                     <button class="btn btn-sm btn-success generate-qr-btn" data-bs-toggle="modal" data-bs-target="#qrCodeModal" data-dept-id="<?php echo $dept['id'];?>" data-dept-name="<?php echo e($dept['name']);?>"><i class="bi bi-qr-code"></i> QR</button>
-                    <form action="admin.php?page=departments" method="POST" class="d-inline" onsubmit="return confirm('Are you sure?');"><input type="hidden" name="department_id" value="<?php echo $dept['id']; ?>"><button type="submit" name="delete_department" class="btn btn-sm btn-danger">Delete</button></form>
-                    </td></tr><?php endforeach; ?></tbody></table></div></div></div>
+                    <form action="admin.php?page=departments" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this department?');"><input type="hidden" name="department_id" value="<?php echo $dept['id']; ?>"><button type="submit" name="delete_department" class="btn btn-sm btn-danger">Delete</button></form>
+                    </td></tr><?php endforeach; ?></tbody></table></div>
+                    <?php else: ?>
+                        <div class="alert alert-info">No departments found.</div>
+                    <?php endif; ?>
+                    </div></div>
                     <?php
                 } else { echo '<div class="alert alert-danger">Access Denied.</div>'; }
                 break;
@@ -393,13 +457,19 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
                     $departments = $pdo->query("SELECT id, name FROM departments ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
                     $users = $pdo->query("SELECT u.*, d.name as dept_name FROM users u LEFT JOIN departments d ON u.department_id = d.id ORDER BY u.username")->fetchAll(PDO::FETCH_ASSOC);
                     ?>
-                     <div class="card"><div class="card-header">Existing Users</div><div class="card-body"><div class="table-responsive"><table class="table table-striped table-hover"><thead><tr><th>Username</th><th>Role</th><th>Department</th><th>Actions</th></tr></thead><tbody>
+                     <div class="card"><div class="card-header">Existing Users</div><div class="card-body">
+                     <?php if (count($users) > 0): ?>
+                     <div class="table-responsive"><table id="datatable" class="table table-striped table-hover"><thead><tr><th>Username</th><th>Role</th><th>Department</th><th>Actions</th></tr></thead><tbody>
                     <?php foreach($users as $user):?>
                     <tr><td><?php echo e($user['username']);?></td><td><?php echo e(ucfirst($user['role']));?></td><td><?php echo e($user['dept_name'] ?? 'N/A');?></td>
                     <td><button class="btn btn-sm btn-primary edit-user-btn" data-bs-toggle="modal" data-bs-target="#usersModal" data-id="<?php echo $user['id'];?>" data-username="<?php echo e($user['username']);?>" data-role="<?php echo $user['role'];?>" data-deptid="<?php echo $user['department_id'];?>"><i class="bi bi-pencil-fill"></i></button>
                     <button type="button" class="btn btn-sm btn-warning reset-password-btn" data-bs-toggle="modal" data-bs-target="#resetPasswordModal" data-userid="<?php echo $user['id'];?>" data-username="<?php echo e($user['username']);?>"><i class="bi bi-key-fill"></i></button>
-                    <?php if($user['id'] != 1):?><form action="admin.php?page=users" method="POST" class="d-inline" onsubmit="return confirm('Are you sure?');"><input type="hidden" name="user_id" value="<?php echo $user['id'];?>"><button type="submit" name="delete_user" class="btn btn-sm btn-danger"><i class="bi bi-trash-fill"></i></button></form><?php endif;?>
-                    </td></tr><?php endforeach;?></tbody></table></div></div></div>
+                    <?php if($user['id'] != 1):?><form action="admin.php?page=users" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this user?');"><input type="hidden" name="user_id" value="<?php echo $user['id'];?>"><button type="submit" name="delete_user" class="btn btn-sm btn-danger"><i class="bi bi-trash-fill"></i></button></form><?php endif;?>
+                    </td></tr><?php endforeach;?></tbody></table></div>
+                    <?php else: ?>
+                        <div class="alert alert-info">No users found.</div>
+                    <?php endif; ?>
+                    </div></div>
                     <?php
                 } else { echo '<div class="alert alert-danger">Access Denied.</div>'; }
                 break;
@@ -424,7 +494,7 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
                             <option value="medium" <?php if($CONFIG['password_complexity'] == 'medium') echo 'selected'; ?>>Medium (8+ Chars, Upper, Lower, Number)</option>
                             <option value="high" <?php if($CONFIG['password_complexity'] == 'high') echo 'selected'; ?>>High (8+ Chars, Upper, Lower, Number, Symbol)</option>
                         </select></div><hr>
-                        <div class="mb-3"><label class="form-label">Current Logo</label><div><img src="img/<?php echo e($CONFIG['agency_logo']); ?>" alt="Current Logo" style="max-height: 80px; background: #eee; padding: 5px; border-radius: 5px;"></div></div>
+                        <div class="mb-3"><label class="form-label">Current Logo</label><div><img src="img/<?php echo e($CONFIG['agency_logo'] ?? ''); ?>" alt="Current Logo" style="max-height: 80px; background: #eee; padding: 5px; border-radius: 5px;"></div></div>
                         <div class="mb-3"><label for="agency_logo" class="form-label">Upload New Logo (Optional)</label><input class="form-control" type="file" name="agency_logo" id="agency_logo" accept="image/png, image/jpeg, image/gif"></div>
                         <button type="submit" name="update_settings" class="btn btn-primary">Save Settings</button>
                     </form></div></div>
@@ -520,8 +590,14 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.min.js"></script>
     <script>
         $(document).ready(function() {
+            if ($('#datatable').length && $('#datatable tbody tr').length > 0) {
+                $('#datatable').DataTable();
+            }
+
             const currentPage = '<?php echo $page; ?>';
 
             $('.add-new-btn').on('click', function() {

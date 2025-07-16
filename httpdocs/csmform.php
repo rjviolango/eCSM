@@ -145,8 +145,9 @@ $responses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <div class="card mt-4">
     <div class="card-header">Feedback Results (<?php echo count($responses); ?>)</div>
     <div class="card-body">
+        <?php if (count($responses) > 0): ?>
         <div class="table-responsive">
-            <table class="table table-hover">
+            <table id="datatable" class="table table-hover">
                 <thead class="table-light">
                     <tr>
                         <th>ID</th>
@@ -158,7 +159,6 @@ $responses = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (count($responses) > 0): ?>
                         <?php foreach($responses as $row): ?>
                         <tr class="view-response-btn" data-id="<?php echo $row['id']; ?>" style="cursor: pointer;">
                             <td><?php echo $row['id']; ?></td>
@@ -172,11 +172,6 @@ $responses = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <td><?php echo e(mb_strimwidth($row['suggestions'], 0, 70, "...")); ?></td>
                         </tr>
                         <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="6" class="text-center">No feedback found for the selected filters.</td>
-                        </tr>
-                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
@@ -191,5 +186,8 @@ $responses = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <?php endif; ?>
             </ul>
         </nav>
+        <?php else: ?>
+            <div class="alert alert-info">No feedback found for the selected filters.</div>
+        <?php endif; ?>
     </div>
 </div>
