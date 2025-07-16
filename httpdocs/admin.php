@@ -70,6 +70,9 @@ if (isset($_GET['action'])) {
             if ($dept_id_to_filter) {
                 $where_clauses[] = "d.id = :filter_id";
                 $params[':filter_id'] = $dept_id_to_filter;
+            } else {
+                // If admin and no department is selected, don't show any data.
+                $where_clauses[] = "1 = 0"; 
             }
         } elseif ($report_level === 'service' && $filter_id) {
             $where_clauses[] = "s.id = :filter_id";
@@ -84,8 +87,8 @@ if (isset($_GET['action'])) {
         $stmt = $pdo->prepare($sql); $stmt->execute($params);
         header('Content-Type: text/csv'); header('Content-Disposition: attachment; filename="csm_report_'.date('Y-m-d').'.csv"');
         $output = fopen('php://output', 'w');
-        fputcsv($output, ['Response ID', 'Submission Date', 'Department', 'Service', 'Affiliation', 'Client Type', 'Age', 'Sex', 'Region', 'CC1', 'CC2', 'CC3', 'SQD0', 'SQD1', 'SQD2', 'SQD3', 'SQD4', 'SQD5', 'SQD6', 'SQD7', 'SQD8', 'Suggestions', 'Email']);
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { fputcsv($output, [ $row['id'], $row['submission_date'], $row['department_name'], $row['service_name'], $row['affiliation'], $row['client_type'], $row['age'], $row['sex'], $row['region_of_residence'], $row['cc1'], $row['cc2'], $row['cc3'], $row['sqd0'], $row['sqd1'], $row['sqd2'], $row['sqd3'], $row['sqd4'], $row['sqd5'], $row['sqd6'], $row['sqd7'], $row['sqd8'], $row['suggestions'], $row['email_address'] ]); }
+        fputcsv($output, ['Response ID', 'Submission Date', 'Department', 'Service', 'Affiliation', 'Client Type', 'Age', 'Sex', 'Region', 'Client Reference #', 'CC1', 'CC2', 'CC3', 'SQD0', 'SQD1', 'SQD2', 'SQD3', 'SQD4', 'SQD5', 'SQD6', 'SQD7', 'SQD8', 'Suggestions', 'Email']);
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { fputcsv($output, [ $row['id'], $row['submission_date'], $row['department_name'], $row['service_name'], $row['affiliation'], $row['client_type'], $row['age'], $row['sex'], $row['region_of_residence'], $row['ref_id'], $row['cc1'], $row['cc2'], $row['cc3'], $row['sqd0'], $row['sqd1'], $row['sqd2'], $row['sqd3'], $row['sqd4'], $row['sqd5'], $row['sqd6'], $row['sqd7'], $row['sqd8'], $row['suggestions'], $row['email_address'] ]); }
         fclose($output);
         exit;
     }
@@ -153,8 +156,8 @@ if (isset($_GET['action'])) {
         $stmt->execute($params);
         header('Content-Type: text/csv'); header('Content-Disposition: attachment; filename="csm_data_export_'.date('Y-m-d').'.csv"');
         $output = fopen('php://output', 'w');
-        fputcsv($output, ['Response ID', 'Submission Date', 'Department', 'Service', 'Affiliation', 'Client Type', 'Age', 'Sex', 'Region', 'Email', 'CC1', 'CC2', 'CC3', 'SQD0', 'SQD1', 'SQD2', 'SQD3', 'SQD4', 'SQD5', 'SQD6', 'SQD7', 'SQD8', 'Suggestions']);
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { fputcsv($output, [ $row['id'], $row['submission_date'], $row['department_name'], $row['service_name'], $row['affiliation'], $row['client_type'], $row['age'], $row['sex'], $row['region_of_residence'], $row['email_address'], $row['cc1'], $row['cc2'], $row['cc3'], $row['sqd0'], $row['sqd1'], $row['sqd2'], $row['sqd3'], $row['sqd4'], $row['sqd5'], $row['sqd6'], $row['sqd7'], $row['sqd8'], $row['suggestions'] ]); }
+        fputcsv($output, ['Response ID', 'Submission Date', 'Department', 'Service', 'Affiliation', 'Client Type', 'Age', 'Sex', 'Region', 'Client Reference #', 'Email', 'CC1', 'CC2', 'CC3', 'SQD0', 'SQD1', 'SQD2', 'SQD3', 'SQD4', 'SQD5', 'SQD6', 'SQD7', 'SQD8', 'Suggestions']);
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { fputcsv($output, [ $row['id'], $row['submission_date'], $row['department_name'], $row['service_name'], $row['affiliation'], $row['client_type'], $row['age'], $row['sex'], $row['region_of_residence'], $row['ref_id'], $row['email_address'], $row['cc1'], $row['cc2'], $row['cc3'], $row['sqd0'], $row['sqd1'], $row['sqd2'], $row['sqd3'], $row['sqd4'], $row['sqd5'], $row['sqd6'], $row['sqd7'], $row['sqd8'], $row['suggestions'] ]); }
         fclose($output);
         exit;
     }
@@ -169,6 +172,7 @@ if (!is_logged_in()) {
             $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?"); $stmt->execute([$username]); $user = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($user && password_verify($password, $user['password_hash'])) {
                 $_SESSION['user_id'] = $user['id']; $_SESSION['username'] = $user['username']; $_SESSION['role'] = $user['role']; $_SESSION['department_id'] = $user['department_id'];
+                log_system_action($pdo, $user['id'], 'User logged in');
                 header("Location: admin.php"); exit;
             } else { $error_message = "Invalid username or password."; }
         }
@@ -196,6 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION)); $check = getimagesize($_FILES["agency_logo"]["tmp_name"]);
             if($check !== false && in_array($imageFileType, ['jpg', 'png', 'jpeg', 'gif'])) { if (move_uploaded_file($_FILES["agency_logo"]["tmp_name"], $target_file)) { $stmt = $pdo->prepare("UPDATE settings SET setting_value = ? WHERE setting_name = 'agency_logo'"); $stmt->execute([$filename]); } }
         }
+        log_system_action($pdo, $_SESSION['user_id'], 'Updated system settings');
         $action_message = '<div class="alert alert-success">Settings updated successfully.</div>';
         // Reload config after update
         $stmt = $pdo->query("SELECT setting_name, setting_value FROM settings"); while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { $CONFIG[$row['setting_name']] = $row['setting_value']; }
@@ -205,36 +210,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $service_name = trim($_POST['service_name']); $service_type = $_POST['service_type'];
         $service_details_html = trim($_POST['service_details_html']); $is_active = isset($_POST['is_active']) ? 1 : 0;
         if (!is_admin() && $department_id != $_SESSION['department_id']) { $action_message = '<div class="alert alert-danger">Access Denied.</div>'; } else {
-            if ($service_id) { $stmt = $pdo->prepare("UPDATE services SET department_id=?, service_name=?, service_type=?, service_details_html=?, is_active=? WHERE id=?"); $stmt->execute([$department_id, $service_name, $service_type, $service_details_html, $is_active, $service_id]); $action_message = '<div class="alert alert-success">Service updated.</div>';
-            } else { $stmt = $pdo->prepare("INSERT INTO services (department_id, service_name, service_type, service_details_html, is_active) VALUES (?, ?, ?, ?, ?)"); $stmt->execute([$department_id, $service_name, $service_type, $service_details_html, $is_active]); $action_message = '<div class="alert alert-success">Service added.</div>'; }
+            if ($service_id) { $stmt = $pdo->prepare("UPDATE services SET department_id=?, service_name=?, service_type=?, service_details_html=?, is_active=? WHERE id=?"); $stmt->execute([$department_id, $service_name, $service_type, $service_details_html, $is_active, $service_id]); log_system_action($pdo, $_SESSION['user_id'], "Updated service '{$service_name}'"); $action_message = '<div class="alert alert-success">Service updated.</div>';
+            } else { $stmt = $pdo->prepare("INSERT INTO services (department_id, service_name, service_type, service_details_html, is_active) VALUES (?, ?, ?, ?, ?)"); $stmt->execute([$department_id, $service_name, $service_type, $service_details_html, $is_active]); log_system_action($pdo, $_SESSION['user_id'], "Added new service '{$service_name}'"); $action_message = '<div class="alert alert-success">Service added.</div>'; }
         }
     }
     if ($page === 'services' && isset($_POST['delete_service'])) {
         $service_id = filter_input(INPUT_POST, 'service_id', FILTER_VALIDATE_INT);
         $stmt = $pdo->prepare("SELECT department_id FROM services WHERE id = ?"); $stmt->execute([$service_id]); $service_dept = $stmt->fetchColumn();
-        if (is_admin() || $service_dept == $_SESSION['department_id']) { $stmt = $pdo->prepare("DELETE FROM services WHERE id = ?"); $stmt->execute([$service_id]); $action_message = '<div class="alert alert-success">Service deleted.</div>'; }
+        if (is_admin() || $service_dept == $_SESSION['department_id']) { $stmt = $pdo->prepare("DELETE FROM services WHERE id = ?"); $stmt->execute([$service_id]); log_system_action($pdo, $_SESSION['user_id'], "Deleted service with ID {$service_id}"); $action_message = '<div class="alert alert-success">Service deleted.</div>'; }
     }
     if (is_admin() && $page === 'departments' && isset($_POST['save_department'])) {
         $dept_id = filter_input(INPUT_POST, 'department_id', FILTER_VALIDATE_INT); $dept_name = trim($_POST['department_name']);
-        if (!empty($dept_name)) { if ($dept_id) { $stmt = $pdo->prepare("UPDATE departments SET name = ? WHERE id = ?"); $stmt->execute([$dept_name, $dept_id]); } else { $stmt = $pdo->prepare("INSERT INTO departments (name) VALUES (?)"); $stmt->execute([$dept_name]); } $action_message = '<div class="alert alert-success">Department saved.</div>'; }
+        if (!empty($dept_name)) { if ($dept_id) { $stmt = $pdo->prepare("UPDATE departments SET name = ? WHERE id = ?"); $stmt->execute([$dept_name, $dept_id]); log_system_action($pdo, $_SESSION['user_id'], "Updated department '{$dept_name}'"); } else { $stmt = $pdo->prepare("INSERT INTO departments (name) VALUES (?)"); $stmt->execute([$dept_name]); log_system_action($pdo, $_SESSION['user_id'], "Added new department '{$dept_name}'"); } $action_message = '<div class="alert alert-success">Department saved.</div>'; }
     }
-    if (is_admin() && $page === 'departments' && isset($_POST['delete_department'])) { $dept_id = filter_input(INPUT_POST, 'department_id', FILTER_VALIDATE_INT); $stmt = $pdo->prepare("DELETE FROM departments WHERE id = ?"); $stmt->execute([$dept_id]); $action_message = '<div class="alert alert-success">Department deleted.</div>'; }
+    if (is_admin() && $page === 'departments' && isset($_POST['delete_department'])) { $dept_id = filter_input(INPUT_POST, 'department_id', FILTER_VALIDATE_INT); $stmt = $pdo->prepare("DELETE FROM departments WHERE id = ?"); $stmt->execute([$dept_id]); log_system_action($pdo, $_SESSION['user_id'], "Deleted department with ID {$dept_id}"); $action_message = '<div class="alert alert-success">Department deleted.</div>'; }
     if (is_admin() && $page === 'users' && isset($_POST['save_user'])) {
-        $user_id = filter_input(INPUT_POST, 'user_id', FILTER_VALIDATE_INT); $username = trim($_POST['username']); $role = $_POST['role'];
+        $user_id = filter_input(INPUT_POST, 'user_id', FILTER_VALIDATE_INT);
+        $username = trim($_POST['username']);
+        $role = $_POST['role'];
         $department_id = ($role === 'dept') ? filter_input(INPUT_POST, 'department_id', FILTER_VALIDATE_INT) : null;
-        if ($user_id) { $stmt = $pdo->prepare("UPDATE users SET username = ?, role = ?, department_id = ? WHERE id = ?"); $stmt->execute([$username, $role, $department_id, $user_id]); $action_message = '<div class="alert alert-success">User updated.</div>'; }
-        else { $password = trim($_POST['password']); if (empty($password)) { $action_message = '<div class="alert alert-danger">Password is required for new users.</div>'; }
-            else { $password_hash = password_hash($password, PASSWORD_DEFAULT); $stmt = $pdo->prepare("INSERT INTO users (username, password_hash, role, department_id) VALUES (?, ?, ?, ?)"); $stmt->execute([$username, $password_hash, $role, $department_id]); $action_message = '<div class="alert alert-success">User added.</div>'; }
+
+        // Ensure department_id is valid or null
+        if ($role === 'dept' && empty($department_id)) {
+            $action_message = '<div class="alert alert-danger">A department must be selected for department-level users.</div>';
+        } else {
+            if ($user_id) {
+                $stmt = $pdo->prepare("UPDATE users SET username = ?, role = ?, department_id = ? WHERE id = ?");
+                $stmt->execute([$username, $role, $department_id, $user_id]);
+                log_system_action($pdo, $_SESSION['user_id'], "Updated user '{$username}'");
+                $action_message = '<div class="alert alert-success">User updated.</div>';
+            } else {
+                $password = trim($_POST['password']);
+                if (empty($password)) {
+                    $action_message = '<div class="alert alert-danger">Password is required for new users.</div>';
+                } else {
+                    $password_hash = password_hash($password, PASSWORD_DEFAULT);
+                    $stmt = $pdo->prepare("INSERT INTO users (username, password_hash, role, department_id) VALUES (?, ?, ?, ?)");
+                    $stmt->execute([$username, $password_hash, $role, $department_id]);
+                    log_system_action($pdo, $_SESSION['user_id'], "Added new user '{$username}'");
+                    $action_message = '<div class="alert alert-success">User added.</div>';
+                }
+            }
         }
     }
     if (is_admin() && $page === 'users' && isset($_POST['reset_password'])) {
         $user_id = filter_input(INPUT_POST, 'user_id', FILTER_VALIDATE_INT); $new_password = trim($_POST['new_password']);
-        if (!empty($new_password)) { $password_hash = password_hash($new_password, PASSWORD_DEFAULT); $stmt = $pdo->prepare("UPDATE users SET password_hash = ? WHERE id = ?"); $stmt->execute([$password_hash, $user_id]); $action_message = '<div class="alert alert-success">Password reset successfully.</div>';
+        if (!empty($new_password)) { $password_hash = password_hash($new_password, PASSWORD_DEFAULT); $stmt = $pdo->prepare("UPDATE users SET password_hash = ? WHERE id = ?"); $stmt->execute([$password_hash, $user_id]); log_system_action($pdo, $_SESSION['user_id'], "Reset password for user with ID {$user_id}"); $action_message = '<div class="alert alert-success">Password reset successfully.</div>';
         } else { $action_message = '<div class="alert alert-danger">New password cannot be empty.</div>'; }
     }
     if (is_admin() && $page === 'users' && isset($_POST['delete_user'])) {
         $user_id = filter_input(INPUT_POST, 'user_id', FILTER_VALIDATE_INT);
-        if ($user_id != 1) { $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?"); $stmt->execute([$user_id]); $action_message = '<div class="alert alert-success">User deleted successfully.</div>';}
+        if ($user_id != 1) { $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?"); $stmt->execute([$user_id]); log_system_action($pdo, $_SESSION['user_id'], "Deleted user with ID {$user_id}"); $action_message = '<div class="alert alert-success">User deleted successfully.</div>';}
         else { $action_message = '<div class="alert alert-danger">Cannot delete the primary admin user.</div>'; }
     }
 }
@@ -296,6 +322,7 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
                 <li class="nav-item"><a class="nav-link <?php if($page=='departments') echo 'active';?>" href="admin.php?page=departments"><i class="bi bi-building-fill"></i>Department Mgt.</a></li>
                 <li class="nav-item"><a class="nav-link <?php if($page=='users') echo 'active';?>" href="admin.php?page=users"><i class="bi bi-people-fill"></i>User Management</a></li>
                 <li class="nav-item"><a class="nav-link <?php if($page=='settings') echo 'active';?>" href="admin.php?page=settings"><i class="bi bi-gear-fill"></i>Settings</a></li>
+                <li class="nav-item"><a class="nav-link <?php if($page=='logs') echo 'active';?>" href="admin.php?page=logs"><i class="bi bi-journal-text"></i>System Logs</a></li>
                 <?php endif; ?>
             </ul>
         </div>
@@ -327,6 +354,9 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
             case 'csmform':
                 include 'csmform.php';
                 break;
+            case 'logs':
+                include 'logs.php';
+                break;
             case 'services':
                 $departments = $pdo->query("SELECT id, name FROM departments ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
                 $service_sql = "SELECT s.*, d.name as dept_name FROM services s JOIN departments d ON s.department_id = d.id";
@@ -334,11 +364,12 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
                 $service_sql .= " ORDER BY s.service_name";
                 $services = $pdo->query($service_sql)->fetchAll(PDO::FETCH_ASSOC);
                 ?>
-                <div class="card"><div class="card-header">Existing Services</div><div class="card-body"><div class="table-responsive"><table class="table table-striped table-hover"><thead><tr><th>Name</th><th>Department</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+                <div class="card"><div class="card-header">Existing Services</div><div class="card-body"><div class="table-responsive"><table class="table table-striped table-hover"><thead><tr><th>ID</th><th>Name</th><th>Department</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead><tbody>
                 <?php foreach($services as $service): ?>
-                <tr><td><?php echo e($service['service_name']); ?></td><td><?php echo e($service['dept_name']); ?></td><td><?php echo e($service['service_type']); ?></td><td><?php echo $service['is_active'] ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Disabled</span>'; ?></td>
+                <tr><td><?php echo e($service['id']); ?></td><td><?php echo e($service['service_name']); ?></td><td><?php echo e($service['dept_name']); ?></td><td><?php echo e($service['service_type']); ?></td><td><?php echo $service['is_active'] ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Disabled</span>'; ?></td>
                 <td>
                     <button class="btn btn-sm btn-primary edit-service-btn" data-bs-toggle="modal" data-bs-target="#servicesModal" data-id="<?php echo $service['id'];?>" data-name="<?php echo e($service['service_name']);?>" data-deptid="<?php echo $service['department_id'];?>" data-type="<?php echo $service['service_type'];?>" data-details="<?php echo e($service['service_details_html']);?>" data-active="<?php echo $service['is_active'];?>"><i class="bi bi-pencil-fill"></i></button>
+                    <button class="btn btn-sm btn-success generate-qr-btn" data-bs-toggle="modal" data-bs-target="#qrCodeModal" data-service-id="<?php echo $service['id'];?>" data-service-name="<?php echo e($service['service_name']);?>"><i class="bi bi-qr-code"></i> QR</button>
                     <form action="admin.php?page=services" method="POST" class="d-inline" onsubmit="return confirm('Are you sure?');"><input type="hidden" name="service_id" value="<?php echo $service['id']; ?>"><button type="submit" name="delete_service" class="btn btn-sm btn-danger"><i class="bi bi-trash-fill"></i></button></form>
                 </td></tr><?php endforeach; ?></tbody></table></div></div></div>
                 <?php
@@ -401,9 +432,24 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
                 break;
             case 'dashboard':
             default:
-                $total_responses = $pdo->query('SELECT count(*) FROM csm_responses')->fetchColumn();
-                $today_responses = $pdo->query("SELECT count(*) FROM csm_responses WHERE DATE(submission_date) = CURDATE()")->fetchColumn();
-                $active_services = $pdo->query("SELECT count(*) FROM services WHERE is_active = 1")->fetchColumn();
+                if (is_admin()) {
+                    $total_responses = $pdo->query('SELECT count(*) FROM csm_responses')->fetchColumn();
+                    $today_responses = $pdo->query("SELECT count(*) FROM csm_responses WHERE DATE(submission_date) = CURDATE()")->fetchColumn();
+                    $active_services = $pdo->query("SELECT count(*) FROM services WHERE is_active = 1")->fetchColumn();
+                } else {
+                    $dept_id = $_SESSION['department_id'];
+                    $total_responses_stmt = $pdo->prepare('SELECT count(*) FROM csm_responses r JOIN services s ON r.service_id = s.id WHERE s.department_id = ?');
+                    $total_responses_stmt->execute([$dept_id]);
+                    $total_responses = $total_responses_stmt->fetchColumn();
+
+                    $today_responses_stmt = $pdo->prepare("SELECT count(*) FROM csm_responses r JOIN services s ON r.service_id = s.id WHERE s.department_id = ? AND DATE(r.submission_date) = CURDATE()");
+                    $today_responses_stmt->execute([$dept_id]);
+                    $today_responses = $today_responses_stmt->fetchColumn();
+
+                    $active_services_stmt = $pdo->prepare("SELECT count(*) FROM services WHERE is_active = 1 AND department_id = ?");
+                    $active_services_stmt->execute([$dept_id]);
+                    $active_services = $active_services_stmt->fetchColumn();
+                }
                 ?>
                 <h4>Welcome, <?php echo e($_SESSION['username']); ?>!</h4><p>This is the main dashboard. Here is a summary of the system status.</p>
                 <div class="row">
@@ -443,8 +489,8 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
     <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button type="submit" name="reset_password" class="btn btn-primary">Reset Password</button></div></form></div></div></div>
 
     <div class="modal fade" id="qrCodeModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-    <div class="modal-header"><h5 class="modal-title" id="qrCodeModalLabel">Department QR Code</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-    <div class="modal-body text-center"><div id="qrCodePrintArea"><h4 id="qrDeptName"></h4><div id="qrcode-container" class="p-3 d-flex justify-content-center"></div><p>Scan this QR code to go directly to this department's feedback form.</p><p><small class="text-muted" id="qrUrl"></small></p></div></div>
+    <div class="modal-header"><h5 class="modal-title" id="qrCodeModalLabel">QR Code</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body text-center"><div id="qrCodePrintArea"><h4 id="qrName"></h4><div id="qrcode-container" class="p-3 d-flex justify-content-center"></div><p id="qrHelpText"></p><p><small class="text-muted" id="qrUrl"></small></p></div></div>
     <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button type="button" class="btn btn-primary" id="downloadQrBtn"><i class="bi bi-download"></i> Download as Image</button></div>
     </div></div></div>
 
@@ -494,7 +540,9 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
                 
                 if ($(this).hasClass('edit-service-btn')) {
                     modal.find('#modalTitle').text('Edit Service');
-                    modal.find('#service_id').val($(this).data('id')); modal.find('#service_name').val($(this).data('name'));
+                    modal.find('#service_id').val($(this).data('id'));
+                    modal.find('#service_id_display').val($(this).data('id'));
+                    modal.find('#service_name').val($(this).data('name'));
                     modal.find('#department_id').val($(this).data('deptid')); modal.find('#service_details_html').val($(this).data('details'));
                     modal.find('input[name="service_type"][value="' + $(this).data('type') + '"]').prop('checked', true);
                     modal.find('#is_active').prop('checked', $(this).data('active') == 1);
@@ -541,13 +589,30 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
                     const button = event.relatedTarget;
                     const deptId = button.getAttribute('data-dept-id');
                     const deptName = button.getAttribute('data-dept-name');
+                    const serviceId = button.getAttribute('data-service-id');
+                    const serviceName = button.getAttribute('data-service-name');
                     const baseUrl = window.location.origin + window.location.pathname.replace('admin.php', 'client.php');
-                    const url = `${baseUrl}?dept_id=${deptId}`;
+                    let url = '';
+                    let name = '';
+                    let helpText = '';
+
+                    if (serviceId) {
+                        url = `${baseUrl}?service_id=${serviceId}`;
+                        name = serviceName;
+                        helpText = "Scan this QR code to go directly to this service's feedback form.";
+                        $('#qrCodeModalLabel').text('Service QR Code');
+                    } else {
+                        url = `${baseUrl}?dept_id=${deptId}`;
+                        name = deptName;
+                        helpText = "Scan this QR code to go directly to this department's feedback form.";
+                        $('#qrCodeModalLabel').text('Department QR Code');
+                    }
                     
                     const qrContainer = document.getElementById("qrcode-container");
                     qrContainer.innerHTML = '';
                     
-                    $('#qrDeptName').text(deptName);
+                    $('#qrName').text(name);
+                    $('#qrHelpText').text(helpText);
                     $('#qrUrl').text(url);
                     
                     new QRCode(qrContainer, {
@@ -578,10 +643,10 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
 
             $('#downloadQrBtn').on('click', function() {
                 const canvas = document.querySelector('#qrcode-container canvas');
-                const deptName = document.getElementById('qrDeptName').innerText.replace(/ /g, '-').toLowerCase();
+                const name = document.getElementById('qrName').innerText.replace(/ /g, '-').toLowerCase();
                 if (canvas) {
                     const link = document.createElement('a');
-                    link.download = `qr-code-${deptName}.png`;
+                    link.download = `qr-code-${name}.png`;
                     link.href = canvas.toDataURL("image/png");
                     link.click();
                 }
@@ -604,6 +669,18 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
                     window.location.href = exportUrl;
                 });
 
+                $('#report_level, #filter_id').on('change', function() {
+                    const level = $('#report_level').val();
+                    const filterId = $('#filter_id').val();
+                    const exportBtn = $('#export-csv-btn');
+
+                    if (level === 'department' && !filterId && '<?php echo $_SESSION['role'] ?>' === 'admin') {
+                        exportBtn.prop('disabled', true);
+                    } else {
+                        exportBtn.prop('disabled', <?php echo empty($report_data) ? 'true' : 'false'; ?>);
+                    }
+                }).trigger('change');
+
                 $('#report_level').on('change', function() {
                     const level = $(this).val(); const filterSelect = $('#filter_id');
                     filterSelect.prop('disabled', true).html('<option>Loading...</option>');
@@ -619,6 +696,8 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
                             filterSelect.html(options).prop('disabled', false); 
                         }, 'json'); 
                     }
+                    // Trigger the change event to update the export button state
+                    filterSelect.trigger('change');
                 }).trigger('change');
                 $('#reportFilterForm').on('submit', function(e){
                     if( ($('#report_level').val() === 'department' || $('#report_level').val() === 'service') && !$('#filter_id').val() ){
@@ -699,6 +778,7 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
                             <div class="col-md-2"><label class="form-label">Sex</label><input type="text" class="form-control-plaintext" value="${data.sex || 'N/A'}" readonly></div>
                             <div class="col-md-2"><label class="form-label">Age</label><input type="text" class="form-control-plaintext" value="${data.age || 'N/A'}" readonly></div>
                             <div class="col-md-2"><label class="form-label">Email</label><input type="text" class="form-control-plaintext" value="${data.email_address || 'N/A'}" readonly></div>
+                            <div class="col-md-2"><label class="form-label">Client Reference #</label><input type="text" class="form-control-plaintext" value="${data.ref_id || 'N/A'}" readonly></div>
                         </div>
                         <hr>
                         <h6>Citizen's Charter (CC)</h6>
@@ -735,6 +815,7 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
                 return `
                 <form action="admin.php?page=services" method="POST"><div class="modal-header"><h5 class="modal-title" id="modalTitle"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body"><input type="hidden" name="service_id" id="service_id">
+                <div class="mb-3"><label class="form-label">Service ID</label><input type="text" id="service_id_display" class="form-control" disabled></div>
                 <div class="row"><div class="col-md-6 mb-3"><label class="form-label">Service Name</label><input type="text" name="service_name" id="service_name" class="form-control" required></div>
                 <div class="col-md-6 mb-3"><label class="form-label">Department</label><select name="department_id" id="department_id" class="form-select" <?php echo !is_admin() ? 'disabled' : ''; ?> required>${deptOptions}</select><?php if (!is_admin()): ?><input type="hidden" name="department_id" value="<?php echo $_SESSION['department_id']; ?>"><?php endif; ?></div>
                 <div class="col-md-6 mb-3"><label class="form-label">Service Type</label><div><input type="radio" class="form-check-input" name="service_type" value="Internal" id="typeInternal" required> <label for="typeInternal">Internal</label><input type="radio" class="form-check-input ms-3" name="service_type" value="External" id="typeExternal"> <label for="typeExternal">External</label></div></div>

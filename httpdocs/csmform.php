@@ -54,15 +54,33 @@ if (!empty($filter_service_id)) {
 
 $where_sql = count($where_clauses) > 0 ? 'WHERE ' . implode(' AND ', $where_clauses) : '';
 
+// Pagination logic
+$per_page = 20;
+$current_page = isset($_GET['p']) ? (int)$_GET['p'] : 1;
+$offset = ($current_page - 1) * $per_page;
+
+// Get total number of records for pagination
+$count_sql = "SELECT COUNT(*) FROM csm_responses r JOIN services s ON r.service_id = s.id JOIN departments d ON s.department_id = d.id $where_sql";
+$count_stmt = $pdo->prepare($count_sql);
+$count_stmt->execute($params);
+$total_records = $count_stmt->fetchColumn();
+$total_pages = ceil($total_records / $per_page);
+
 $sql = "SELECT r.id, r.submission_date, r.region_of_residence, r.sqd0, r.suggestions, s.service_name, d.name as department_name 
         FROM csm_responses r 
         JOIN services s ON r.service_id = s.id 
         JOIN departments d ON s.department_id = d.id 
         $where_sql 
-        ORDER BY r.submission_date DESC";
+        ORDER BY r.submission_date DESC
+        LIMIT :per_page OFFSET :offset";
 
 $stmt = $pdo->prepare($sql);
-$stmt->execute($params);
+$stmt->bindParam(':per_page', $per_page, PDO::PARAM_INT);
+$stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+foreach ($params as $key => &$val) {
+    $stmt->bindParam($key, $val);
+}
+$stmt->execute();
 $responses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
@@ -162,5 +180,16 @@ $responses = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </tbody>
             </table>
         </div>
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                <?php if ($total_pages > 1): ?>
+                    <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                        <li class="page-item <?php if ($i == $current_page) echo 'active'; ?>">
+                            <a class="page-link" href="?page=csmform&p=<?php echo $i; ?>&<?php echo http_build_query($_GET, '', '&amp;'); ?>"><?php echo $i; ?></a>
+                        </li>
+                    <?php endfor; ?>
+                <?php endif; ?>
+            </ul>
+        </nav>
     </div>
 </div>

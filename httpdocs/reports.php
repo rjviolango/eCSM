@@ -138,17 +138,29 @@ if ($show_report) {
     if ($total_respondents > 0) {
         $sqd0_scores = array_filter(array_column($responses, 'sqd0'), 'is_numeric');
         $report_data['overall_satisfaction'] = count($sqd0_scores) > 0 ? (array_sum($sqd0_scores) / count($sqd0_scores) - 1) / 4 * 100 : 0;
+        $report_data['overall_satisfaction_count'] = count($sqd0_scores);
         $cc1_aware = count(array_filter($responses, fn($r) => in_array($r['cc1'], [1, 2, 3])));
         $report_data['cc_awareness'] = ($cc1_aware / $total_respondents) * 100;
+        $report_data['cc_awareness_count'] = $cc1_aware;
         $aware_responses = array_filter($responses, fn($r) => in_array($r['cc1'], [1, 2, 3]));
-        if (count($aware_responses) > 0) {
+        $aware_responses_count = count($aware_responses);
+        if ($aware_responses_count > 0) {
             $cc2_easy = count(array_filter($aware_responses, fn($r) => $r['cc2'] == 1));
-            $report_data['cc_visibility'] = ($cc2_easy / count($aware_responses)) * 100;
+            $report_data['cc_visibility'] = ($cc2_easy / $aware_responses_count) * 100;
+            $report_data['cc_visibility_count'] = $cc2_easy;
             $cc3_helped = count(array_filter($aware_responses, fn($r) => $r['cc3'] == 1));
-            $report_data['cc_helpfulness'] = ($cc3_helped / count($aware_responses)) * 100;
-        } else { $report_data['cc_visibility'] = 0; $report_data['cc_helpfulness'] = 0; }
-        $report_data['client_types'] = array_count_values(array_column($responses, 'client_type'));
-        $report_data['sex_distribution'] = array_count_values(array_column($responses, 'sex'));
+            $report_data['cc_helpfulness'] = ($cc3_helped / $aware_responses_count) * 100;
+            $report_data['cc_helpfulness_count'] = $cc3_helped;
+        } else { 
+            $report_data['cc_visibility'] = 0; 
+            $report_data['cc_visibility_count'] = 0;
+            $report_data['cc_helpfulness'] = 0; 
+            $report_data['cc_helpfulness_count'] = 0;
+        }
+        $report_data['client_types'] = array_count_values(array_filter(array_column($responses, 'client_type'), fn($value) => !is_null($value)));
+        $sex_column = array_column($responses, 'sex');
+        $report_data['sex_distribution'] = array_count_values(array_filter($sex_column, fn($value) => !is_null($value)));
+        $report_data['sex_distribution']['Not Stated'] = count(array_filter($sex_column, fn($value) => is_null($value)));
     }
 }
 ?>
@@ -199,10 +211,10 @@ if ($show_report) {
         <table class="table table-bordered table-hover">
             <thead class="table-light"><tr><th>Measure</th><th>Score</th><th>Rating</th></tr></thead>
             <tbody>
-                <tr><td>Overall Satisfaction</td><td><?php echo number_format($report_data['overall_satisfaction'], 2); ?>%</td><td><?php echo getRating($report_data['overall_satisfaction']); ?></td></tr>
-                <tr><td>CC Awareness</td><td><?php echo number_format($report_data['cc_awareness'], 2); ?>%</td><td><?php echo getRating($report_data['cc_awareness']); ?></td></tr>
-                <tr><td>CC Visibility</td><td><?php echo number_format($report_data['cc_visibility'], 2); ?>%</td><td><?php echo getRating($report_data['cc_visibility']); ?></td></tr>
-                <tr><td>CC Helpfulness</td><td><?php echo number_format($report_data['cc_helpfulness'], 2); ?>%</td><td><?php echo getRating($report_data['cc_helpfulness']); ?></td></tr>
+                <tr><td>Overall Satisfaction</td><td><?php echo number_format($report_data['overall_satisfaction'], 2); ?>% (<?php echo $report_data['overall_satisfaction_count']; ?>)</td><td><?php echo getRating($report_data['overall_satisfaction']); ?></td></tr>
+                <tr><td>CC Awareness</td><td><?php echo number_format($report_data['cc_awareness'], 2); ?>% (<?php echo $report_data['cc_awareness_count']; ?>)</td><td><?php echo getRating($report_data['cc_awareness']); ?></td></tr>
+                <tr><td>CC Visibility</td><td><?php echo number_format($report_data['cc_visibility'], 2); ?>% (<?php echo $report_data['cc_visibility_count']; ?>)</td><td><?php echo getRating($report_data['cc_visibility']); ?></td></tr>
+                <tr><td>CC Helpfulness</td><td><?php echo number_format($report_data['cc_helpfulness'], 2); ?>% (<?php echo $report_data['cc_helpfulness_count']; ?>)</td><td><?php echo getRating($report_data['cc_helpfulness']); ?></td></tr>
             </tbody>
         </table>
     </div>
@@ -218,7 +230,9 @@ if ($show_report) {
                         <tbody>
                         <?php if (!empty($report_data['client_types'])): $total_clients = array_sum($report_data['client_types']); foreach($report_data['client_types'] as $type => $count): ?>
                         <tr><td><?php echo e($type); ?></td><td><?php echo $count; ?></td><td><?php echo number_format(($count / $total_clients) * 100, 2); ?>%</td></tr>
-                        <?php endforeach; else: ?>
+                        <?php endforeach; ?>
+                        <tr class="fw-bold"><td class="text-end">Total</td><td><?php echo $total_clients; ?></td><td>100.00%</td></tr>
+                        <?php else: ?>
                         <tr><td colspan="3" class="text-center">No data available.</td></tr>
                         <?php endif; ?>
                         </tbody>
@@ -231,11 +245,14 @@ if ($show_report) {
                     <table class="table table-bordered">
                         <thead class="table-light"><tr><th>Sex</th><th>Respondents</th><th>Percentage</th></tr></thead>
                         <tbody>
-                        <?php if (!empty($report_data['sex_distribution'])): $total_sex = array_sum($report_data['sex_distribution']); foreach($report_data['sex_distribution'] as $type => $count): ?>
-                        <tr><td><?php echo e($type); ?></td><td><?php echo $count; ?></td><td><?php echo number_format(($count / $total_sex) * 100, 2); ?>%</td></tr>
-                        <?php endforeach; else: ?>
-                        <tr><td colspan="3" class="text-center">No data available.</td></tr>
-                        <?php endif; ?>
+                        <?php
+                        $sex_distribution = $report_data['sex_distribution'];
+                        $total_sex = array_sum($sex_distribution);
+                        ?>
+                        <tr><td>Male</td><td><?php echo $sex_distribution['Male'] ?? 0; ?></td><td><?php echo $total_sex > 0 ? number_format((($sex_distribution['Male'] ?? 0) / $total_sex) * 100, 2) : 0; ?>%</td></tr>
+                        <tr><td>Female</td><td><?php echo $sex_distribution['Female'] ?? 0; ?></td><td><?php echo $total_sex > 0 ? number_format((($sex_distribution['Female'] ?? 0) / $total_sex) * 100, 2) : 0; ?>%</td></tr>
+                        <tr><td>Not Stated</td><td><?php echo $sex_distribution['Not Stated'] ?? 0; ?></td><td><?php echo $total_sex > 0 ? number_format((($sex_distribution['Not Stated'] ?? 0) / $total_sex) * 100, 2) : 0; ?>%</td></tr>
+                        <tr class="fw-bold"><td class="text-end">Total</td><td><?php echo $total_sex; ?></td><td>100.00%</td></tr>
                         </tbody>
                     </table>
                 </div>

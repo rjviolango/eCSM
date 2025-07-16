@@ -4,9 +4,9 @@
 
 // --- DATABASE CONFIGURATION ---
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'ecsm_db');
-define('DB_USER', 'ecsm_db');
-define('DB_PASS', 'pZ9b09~3w');
+define('DB_NAME', 'ecsm_db_v2');
+define('DB_USER', 'ecsm_db_v2');
+define('DB_PASS', 'si9#7u8X2');
 
 // --- SITE CONFIGURATION ---
 ini_set('display_errors', 1);
@@ -34,6 +34,11 @@ try {
         'timezone' => 'Asia/Manila' // Default fallback timezone
     ];
 }
+
+// --- reCAPTCHA CONFIGURATION ---
+$CONFIG['recaptcha_enabled'] = true;
+$CONFIG['recaptcha_site_key'] = '6Lfp14QrAAAAAKr2EXbD4bAVoeqUo7YZUdYFY-k0';
+$CONFIG['recaptcha_secret_key'] = '6Lfp14QrAAAAANOObkBczmPS2NXUKbtnudkfvynD';
 
 // *** MODIFIED: Set timezone based on database config with a fallback ***
 date_default_timezone_set($CONFIG['timezone'] ?? 'Asia/Manila');
@@ -80,4 +85,10 @@ function e($string) {
     return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
 }
 
+function log_system_action($pdo, $user_id, $action) {
+    $ip_address = $_SERVER['REMOTE_ADDR'];
+    $user_agent = $_SERVER['HTTP_USER_AGENT'];
+    $stmt = $pdo->prepare("INSERT INTO system_logs (user_id, ip_address, user_agent, action) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$user_id, $ip_address, $user_agent, $action]);
+}
 ?>
