@@ -85,10 +85,14 @@ if (isset($_GET['action'])) {
         $where_sql = 'WHERE ' . implode(' AND ', $where_clauses);
         $sql = "SELECT r.*, s.service_name, d.name as department_name FROM csm_responses r JOIN services s ON r.service_id = s.id JOIN departments d ON s.department_id = d.id $where_sql";
         $stmt = $pdo->prepare($sql); $stmt->execute($params);
-        header('Content-Type: text/csv'); header('Content-Disposition: attachment; filename="csm_report_'.date('Y-m-d').'.csv"');
+        header('Content-Type: text/csv; charset=utf-8'); header('Content-Disposition: attachment; filename="csm_report_'.date('Y-m-d').'.csv"');
         $output = fopen('php://output', 'w');
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF)); // Add UTF-8 BOM
         fputcsv($output, ['Response ID', 'Submission Date', 'Department', 'Service', 'Affiliation', 'Client Type', 'Age', 'Sex', 'Region', 'Client Reference #', 'CC1', 'CC2', 'CC3', 'SQD0', 'SQD1', 'SQD2', 'SQD3', 'SQD4', 'SQD5', 'SQD6', 'SQD7', 'SQD8', 'Suggestions', 'Email']);
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { fputcsv($output, [ $row['id'], $row['submission_date'], $row['department_name'], $row['service_name'], $row['affiliation'], $row['client_type'], $row['age'], $row['sex'], $row['region_of_residence'], $row['ref_id'], $row['cc1'], $row['cc2'], $row['cc3'], $row['sqd0'], $row['sqd1'], $row['sqd2'], $row['sqd3'], $row['sqd4'], $row['sqd5'], $row['sqd6'], $row['sqd7'], $row['sqd8'], $row['suggestions'], $row['email_address'] ]); }
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $row['submission_date'] = convert_to_user_timezone($row['submission_date']);
+            fputcsv($output, [ $row['id'], $row['submission_date'], $row['department_name'], $row['service_name'], $row['affiliation'], $row['client_type'], $row['age'], $row['sex'], $row['region_of_residence'], $row['ref_id'], $row['cc1'], $row['cc2'], $row['cc3'], $row['sqd0'], $row['sqd1'], $row['sqd2'], $row['sqd3'], $row['sqd4'], $row['sqd5'], $row['sqd6'], $row['sqd7'], $row['sqd8'], $row['suggestions'], $row['email_address'] ]);
+        }
         fclose($output);
         exit;
     }
@@ -115,6 +119,8 @@ if (isset($_GET['action'])) {
         $response = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($response) {
+            // Convert timestamp before sending to the client
+            $response['submission_date'] = convert_to_user_timezone($response['submission_date']); // Use default Y-m-d H:i:s format
             echo json_encode(['success' => true, 'data' => $response]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Response not found or access denied.']);
@@ -154,10 +160,14 @@ if (isset($_GET['action'])) {
         $sql = "SELECT r.*, s.service_name, d.name as department_name FROM csm_responses r JOIN services s ON r.service_id = s.id JOIN departments d ON s.department_id = d.id $where_sql ORDER BY r.submission_date DESC";
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
-        header('Content-Type: text/csv'); header('Content-Disposition: attachment; filename="csm_data_export_'.date('Y-m-d').'.csv"');
+        header('Content-Type: text/csv; charset=utf-8'); header('Content-Disposition: attachment; filename="csm_data_export_'.date('Y-m-d').'.csv"');
         $output = fopen('php://output', 'w');
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF)); // Add UTF-8 BOM
         fputcsv($output, ['Response ID', 'Submission Date', 'Department', 'Service', 'Affiliation', 'Client Type', 'Age', 'Sex', 'Region', 'Client Reference #', 'Email', 'CC1', 'CC2', 'CC3', 'SQD0', 'SQD1', 'SQD2', 'SQD3', 'SQD4', 'SQD5', 'SQD6', 'SQD7', 'SQD8', 'Suggestions']);
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { fputcsv($output, [ $row['id'], $row['submission_date'], $row['department_name'], $row['service_name'], $row['affiliation'], $row['client_type'], $row['age'], $row['sex'], $row['region_of_residence'], $row['ref_id'], $row['email_address'], $row['cc1'], $row['cc2'], $row['cc3'], $row['sqd0'], $row['sqd1'], $row['sqd2'], $row['sqd3'], $row['sqd4'], $row['sqd5'], $row['sqd6'], $row['sqd7'], $row['sqd8'], $row['suggestions'] ]); }
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $row['submission_date'] = convert_to_user_timezone($row['submission_date']);
+            fputcsv($output, [ $row['id'], $row['submission_date'], $row['department_name'], $row['service_name'], $row['affiliation'], $row['client_type'], $row['age'], $row['sex'], $row['region_of_residence'], $row['ref_id'], $row['email_address'], $row['cc1'], $row['cc2'], $row['cc3'], $row['sqd0'], $row['sqd1'], $row['sqd2'], $row['sqd3'], $row['sqd4'], $row['sqd5'], $row['sqd6'], $row['sqd7'], $row['sqd8'], $row['suggestions'] ]);
+        }
         fclose($output);
         exit;
     }

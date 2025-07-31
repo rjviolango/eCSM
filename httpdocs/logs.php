@@ -32,7 +32,7 @@ $logs = $pdo->query("SELECT sl.*, u.username FROM system_logs sl LEFT JOIN users
                         <?php foreach($logs as $log): ?>
                         <tr>
                             <td><?php echo $log['id']; ?></td>
-                            <td><?php echo date('M d, Y, h:i A', strtotime($log['timestamp'])); ?></td>
+                            <td><?php echo convert_to_user_timezone($log['timestamp'], 'M d, Y, h:i A'); ?></td>
                             <td><?php echo e($log['username'] ?? 'N/A'); ?></td>
                             <td><?php echo e($log['ip_address']); ?></td>
                             <td><?php echo e($log['action']); ?></td>

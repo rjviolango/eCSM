@@ -91,4 +91,34 @@ function log_system_action($pdo, $user_id, $action) {
     $stmt = $pdo->prepare("INSERT INTO system_logs (user_id, ip_address, user_agent, action) VALUES (?, ?, ?, ?)");
     $stmt->execute([$user_id, $ip_address, $user_agent, $action]);
 }
+
+/**
+ * Converts a UTC datetime string to the user-configured timezone.
+ *
+ * @param string|null $datetime_string The UTC datetime string from the database.
+ * @param string $format The desired output format for the date.
+ * @return string The formatted and converted datetime string, or 'N/A' if input is empty.
+ */
+function convert_to_user_timezone($datetime_string, $format = 'Y-m-d H:i:s') {
+    if (empty($datetime_string)) {
+        return 'N/A';
+    }
+
+    global $CONFIG;
+    // Use the timezone from the configuration, with a fallback to a default value.
+    $timezone_identifier = $CONFIG['timezone'] ?? 'Asia/Manila';
+
+    try {
+        // Create a DateTime object from the input string, explicitly specifying it's in UTC.
+        $date = new DateTime($datetime_string, new DateTimeZone('UTC'));
+        // Set the timezone to the one specified by the user's configuration.
+        $date->setTimezone(new DateTimeZone($timezone_identifier));
+        // Return the date formatted as requested.
+        return $date->format($format);
+    } catch (Exception $e) {
+        // In case of an error (e.g., invalid date format), return the original string as a fallback.
+        error_log("Error converting timezone: " . $e->getMessage());
+        return $datetime_string;
+    }
+}
 ?>

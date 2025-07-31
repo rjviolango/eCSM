@@ -166,7 +166,7 @@ $responses = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <strong><?php echo e($row['department_name']); ?></strong><br>
                                 <small class="text-muted"><?php echo e($row['service_name']); ?></small>
                             </td>
-                            <td><?php echo date('M d, Y, h:i A', strtotime($row['submission_date'])); ?></td>
+                            <td><?php echo convert_to_user_timezone($row['submission_date'], 'M d, Y, h:i A'); ?></td>
                             <td><?php echo e($row['region_of_residence']); ?></td>
                             <td><?php echo getScoreText($row['sqd0']); ?></td>
                             <td><?php echo e(mb_strimwidth($row['suggestions'], 0, 70, "...")); ?></td>
