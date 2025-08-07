@@ -3,6 +3,11 @@
 // reports.php - Included by admin.php (Final Version with All Fixes)
 ?>
 <style>
+    #printableReportArea .report-logo {
+        max-height: 60px;
+    }
+</style>
+<style>
 @media print {
     body, html {
         width: 100%;
@@ -50,6 +55,17 @@
     }
     .text-center {
         text-align: center;
+    }
+    .report-header {
+        position: relative;
+        padding-bottom: 15px;
+        margin-bottom: 20px;
+    }
+    .report-logo {
+        position: absolute;
+        top: 0;
+        left: 0;
+        max-height: 60px;
     }
     .mb-4 {
         margin-bottom: 1.5rem !important;
@@ -193,16 +209,18 @@ if ($show_report) {
 </div>
 
 <?php if ($show_report): ?>
-<hr>
 <div class="d-flex justify-content-end mb-3">
     <?php if (!empty($report_data)): ?>
     <button class="btn btn-secondary" onclick="window.print();"><i class="bi bi-printer-fill"></i> Print Report</button>
     <?php endif; ?>
 </div>
 <div id="printableReportArea">
-    <div class="text-center mb-4">
-        <h4>CSM Report</h4>
-        <p class="lead">For the period: <?php echo date('F d, Y', strtotime($date_start)) . ' to ' . date('F d, Y', strtotime($date_end)); ?></p>
+    <div class="report-header text-center mb-4">
+        <img src="img/<?php echo e($CONFIG['agency_logo']); ?>" alt="Agency Logo" class="report-logo">
+        <p class="mb-0">Republic of the Philippines</p>
+        <h5 class="fw-bold"><?php echo e(strtoupper($CONFIG['agency_name'])); ?></h5>
+        <p class="mb-0"><?php echo e($CONFIG['province_name']); ?>, <?php echo e($CONFIG['region_name']); ?></p>
+        <p class="lead mt-4">For the period: <?php echo date('F d, Y', strtotime($date_start)) . ' to ' . date('F d, Y', strtotime($date_end)); ?></p>
     </div>
     <?php if (!empty($report_data)): ?>
     <!-- Section 1: Overall Summary -->
