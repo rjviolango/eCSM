@@ -823,7 +823,7 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
                 });
 
                 const responseModal = new bootstrap.Modal(document.getElementById('viewResponseModal'));
-                $('.view-response-btn').on('click', function() {
+                $('#datatable').on('click', '.view-response-btn', function() {
                     const responseId = $(this).data('id');
                     $('#response-details-content').html('<p class="text-center">Loading details...</p>');
                     responseModal.show();
