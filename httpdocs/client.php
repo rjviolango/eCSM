@@ -138,6 +138,28 @@ if (!empty($_POST['action'])) {
         .form-check-label.affiliation { width: 100%; text-align: center; padding: 1rem; border: 1px solid #dee2e6; cursor: pointer; border-radius: 8px; font-weight: 500; }
         .form-check-input:checked + .form-check-label.affiliation { background-color: #0d6efd; color: white; border-color: #0d6efd; }
         .footer { flex-shrink: 0; }
+
+        /* Make form controls more visible */
+        .form-control, .form-select {
+            border: 1px solid #ced4da; /* Bootstrap's default, but let's be explicit */
+            background-color: #fff; /* Ensure white background */
+        }
+
+        /* Make radio buttons/checkboxes more visible */
+        .form-check-input {
+            border: 1px solid #868e96; /* A darker grey */
+            background-color: #f1f3f5; /* A very light grey to stand out on white modal */
+        }
+
+        .form-check-input:checked {
+            background-color: #0d6efd; /* Bootstrap's default blue */
+            border-color: #0d6efd;
+        }
+
+        #csmModal .table-responsive td:hover {
+            background-color: #e9ecef; /* A light grey hover effect */
+            cursor: pointer;
+        }
     </style>
 </head>
 <body class="d-flex flex-column h-100" 
@@ -418,6 +440,14 @@ if (!empty($_POST['action'])) {
                 }
                 $('#btnSubmit').prop('disabled', false).text('Submit Feedback');
             });
+        });
+
+        // Add click event listener to table cells in the SQD table to select the radio button
+        $(document).on('click', '#csmModal .table-responsive td', function() {
+            const radio = $(this).find('input[type="radio"]');
+            if (radio.length) {
+                radio.prop('checked', true);
+            }
         });
     });
     </script>
