@@ -392,7 +392,9 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
 
     <main class="main-content">
         <div class="page-header d-flex justify-content-between align-items-center">
+            <?php if ($page !== 'reports'): ?>
             <h1 class="h2 mb-0"><?php echo e(ucfirst(str_replace('_', ' ', $page))); ?></h1>
+            <?php endif; ?>
             <?php 
             if(in_array($page, ['services', 'departments', 'users'])) {
                 if($page == 'services' || is_admin()){
